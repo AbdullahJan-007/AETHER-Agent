@@ -17,19 +17,26 @@ export class TerminalRunner {
    * Cleanses environment variables to prevent leaking server-side API keys to child processes.
    */
   private static getCleanEnv(): NodeJS.ProcessEnv {
-    const clean = { ...process.env, CI: "true" };
+    const blockedKeys = new Set([
+      "GOOGLE_API_KEY",
+      "GEMINI_API_KEY",
+      "OPENAI_API_KEY",
+      "ANTHROPIC_API_KEY",
+      "GROQ_API_KEY",
+      "AWS_SECRET_ACCESS_KEY",
+      "GITHUB_TOKEN",
+      "GH_TOKEN",
+    ]);
 
-    // Explicitly delete sensitive keys that should never be visible to client project scripts
-    delete clean.GOOGLE_API_KEY;
-    delete clean.GEMINI_API_KEY;
-    delete clean.OPENAI_API_KEY;
-    delete clean.ANTHROPIC_API_KEY;
-    delete clean.GROQ_API_KEY;
-    delete clean.AWS_SECRET_ACCESS_KEY;
-    delete clean.GITHUB_TOKEN;
-    delete clean.GH_TOKEN;
+    const clean: Record<string, string | undefined> = { CI: "true" };
 
-    return clean;
+    for (const [key, value] of Object.entries(process.env)) {
+      if (!blockedKeys.has(key)) {
+        clean[key] = value;
+      }
+    }
+
+    return clean as NodeJS.ProcessEnv;
   }
 
   /**
