@@ -1,0 +1,16 @@
+{
+  "name": "AETHER Full-Stack AI Engineer",
+  "short_name": "AETHER",
+  "description": "On-Premise Full-Stack AI Developer Workstation",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090a0f",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}
