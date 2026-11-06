@@ -9,7 +9,13 @@ import {
 import type { AgentEvent, AgentRunOptions } from "./events";
 import { getAgentConfig } from "./config";
 import { buildAgentSystemPrompt } from "./system-prompt";
-import { createAgentModel, throttleModelRequest } from "./model";
+import {
+  buildModelFailoverList,
+  createAgentModel,
+  discoverAvailableModels,
+  isModelNotFoundError,
+  throttleModelRequest,
+} from "./model";
 import { allToolDefs, createLangChainTools } from "./tools";
 import type { ProposedChange, ToolContext } from "./tools/types";
 
@@ -40,9 +46,10 @@ export async function* runAgent(
   const tools = createLangChainTools(ctx);
   const toolDefsByName = new Map(allToolDefs.map((t) => [t.name, t]));
 
+  let activeModelId = config.model;
   let model: any;
   try {
-    const baseModel = injectedModel || createAgentModel(opts.apiKey);
+    const baseModel = injectedModel || createAgentModel(opts.apiKey, activeModelId);
     model = baseModel.bindTools ? baseModel.bindTools(tools) : baseModel;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -54,7 +61,6 @@ export async function* runAgent(
   const systemPrompt = buildAgentSystemPrompt(opts.mode, opts.attachedFiles);
   const conversationMessages: BaseMessage[] = [new SystemMessage(systemPrompt)];
 
-  // Budget past messages by character length, taking the latest messages
   const rawHistory = opts.messages || [];
   let budget = config.historyCharBudget;
   const historyToInclude: Array<{ role: string; content: string }> = [];
@@ -77,6 +83,47 @@ export async function* runAgent(
     }
   }
 
+  async function openStreamWithFailover(): Promise<AsyncIterable<AIMessageChunk>> {
+    try {
+      return await model.stream(conversationMessages, { signal: opts.signal });
+    } catch (primaryErr: unknown) {
+      if (injectedModel || !isModelNotFoundError(primaryErr)) {
+        throw primaryErr;
+      }
+
+      // Self-healing Staff Engineer failover: extract Google's recommended model + query available models
+      const discovered = await discoverAvailableModels(opts.apiKey);
+      const failoverCandidates = buildModelFailoverList(
+        activeModelId,
+        primaryErr,
+        discovered
+      );
+
+      let lastErr: unknown = primaryErr;
+      for (const candidateModelId of failoverCandidates) {
+        if (opts.signal?.aborted) throw primaryErr;
+        try {
+          const fallbackBase = createAgentModel(opts.apiKey, candidateModelId);
+          const candidateBound = fallbackBase.bindTools
+            ? fallbackBase.bindTools(tools)
+            : fallbackBase;
+          const stream = await candidateBound.stream(conversationMessages, {
+            signal: opts.signal,
+          });
+          activeModelId = candidateModelId;
+          model = candidateBound;
+          return stream;
+        } catch (retryErr: unknown) {
+          lastErr = retryErr;
+          if (!isModelNotFoundError(retryErr)) {
+            throw retryErr;
+          }
+        }
+      }
+      throw lastErr;
+    }
+  }
+
   try {
     for (let step = 0; step < config.maxSteps; step++) {
       if (opts.signal?.aborted) {
@@ -86,11 +133,8 @@ export async function* runAgent(
 
       await throttleModelRequest(opts.signal);
 
-      // Stream the model response
       let fullChunk: AIMessageChunk | null = null;
-      const stream = await model.stream(conversationMessages, {
-        signal: opts.signal,
-      });
+      const stream = await openStreamWithFailover();
 
       for await (const chunk of stream) {
         if (opts.signal?.aborted) {
@@ -116,7 +160,6 @@ export async function* runAgent(
       const aiResponse = fullChunk ?? new AIMessageChunk("");
       const rawCalls = (aiResponse as any).tool_calls || [];
 
-      // If no tool calls were requested, the model turn is complete
       if (!rawCalls || rawCalls.length === 0) {
         while (queuedEvents.length > 0) {
           yield queuedEvents.shift()!;
@@ -125,18 +168,14 @@ export async function* runAgent(
         return;
       }
 
-      // Review Focus 1: Gemini sometimes returns tool calls without ids.
-      // Ensure every tool call has a valid UUID before appending.
       for (const call of rawCalls) {
         if (!call.id || call.id.trim() === "") {
           call.id = crypto.randomUUID();
         }
       }
 
-      // Append assistant's tool-calling response to message history
       conversationMessages.push(aiResponse);
 
-      // Execute each requested tool call
       for (const call of rawCalls) {
         if (opts.signal?.aborted) {
           yield { type: "done", reason: "aborted" };
@@ -172,7 +211,6 @@ export async function* runAgent(
           output = `Error: ${err instanceof Error ? err.message : String(err)}`;
         }
 
-        // Emit any changes staged during tool execution
         while (queuedEvents.length > 0) {
           yield queuedEvents.shift()!;
         }
@@ -196,7 +234,6 @@ export async function* runAgent(
       }
     }
 
-    // If max steps reached without final response
     while (queuedEvents.length > 0) {
       yield queuedEvents.shift()!;
     }
