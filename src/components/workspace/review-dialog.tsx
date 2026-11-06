@@ -2,8 +2,6 @@
 
 import React, { useState } from "react";
 import {
-  FileText,
-  FilePlus,
   CheckSquare,
   Square,
   Save,
@@ -12,8 +10,14 @@ import {
   ChevronDown,
   ChevronRight,
   ShieldCheck,
+  Download,
 } from "lucide-react";
 import type { ProposedChange } from "@/lib/agent/tools/types";
+import { useWorkstationStore } from "@/store/workstation-store";
+import {
+  applyChangesToBrowserDirectory,
+  downloadVirtualWorkspaceZip,
+} from "@/lib/workspace/browser-fs";
 import { toast } from "sonner";
 
 interface ReviewDialogProps {
@@ -35,6 +39,8 @@ export function ReviewDialog({
   onDiscard,
   onAskRevision,
 }: ReviewDialogProps) {
+  const { workspaceMode, virtualFiles, dirHandle, updateVirtualFiles } =
+    useWorkstationStore();
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(
     () => new Set(changes.map((c) => c.path))
   );
@@ -43,7 +49,6 @@ export function ReviewDialog({
   const [revisionFeedback, setRevisionFeedback] = useState("");
   const [showRevisionInput, setShowRevisionInput] = useState(false);
 
-  // Sync selected paths when changes update
   React.useEffect(() => {
     setSelectedPaths(new Set(changes.map((c) => c.path)));
   }, [changes]);
@@ -86,6 +91,36 @@ export function ReviewDialog({
     const savedPaths: string[] = [];
 
     try {
+      if (workspaceMode === "browser") {
+        const updates: Record<string, string> = {};
+        for (const item of toSave) {
+          updates[item.path] = item.content;
+          savedPaths.push(item.path);
+        }
+        updateVirtualFiles(updates);
+
+        if (dirHandle) {
+          await applyChangesToBrowserDirectory(
+            dirHandle,
+            toSave.map((item) => ({
+              filePath: item.path,
+              proposedContent: item.content,
+            }))
+          );
+          toast.success(
+            `Saved ${savedPaths.length} file${savedPaths.length === 1 ? "" : "s"} directly to your PC folder (with .backup)`
+          );
+        } else {
+          toast.success(
+            `Applied ${savedPaths.length} file${savedPaths.length === 1 ? "" : "s"} in workspace. Click Download ZIP anytime to export.`
+          );
+        }
+
+        onSaved(savedPaths);
+        onClose();
+        return;
+      }
+
       for (const item of toSave) {
         const res = await fetch("/api/workspace", {
           method: "POST",
@@ -118,6 +153,18 @@ export function ReviewDialog({
     }
   };
 
+  const handleDownloadPatchedZip = async () => {
+    const toSave = changes.filter((c) => selectedPaths.has(c.path));
+    const updates: Record<string, string> = {};
+    for (const item of toSave) {
+      updates[item.path] = item.content;
+    }
+    const merged = { ...virtualFiles, ...updates };
+    updateVirtualFiles(updates);
+    await downloadVirtualWorkspaceZip(projectRoot || "aether-workspace", merged);
+    toast.success("Downloaded patched workspace ZIP");
+  };
+
   const handleSendRevision = () => {
     if (!revisionFeedback.trim()) return;
     onAskRevision(revisionFeedback.trim());
@@ -129,10 +176,8 @@ export function ReviewDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
       <div className="w-full max-w-3xl max-h-[85vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden">
-        {/* Sunrise Gradient Top Rule */}
         <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-rose-500 to-purple-600" />
 
-        {/* Dialog Header */}
         <div className="p-4 sm:p-5 border-b border-stone-100 flex items-start justify-between bg-stone-50/60">
           <div>
             <div className="flex items-center gap-2">
@@ -142,7 +187,7 @@ export function ReviewDialog({
               </h2>
             </div>
             <p className="text-xs text-stone-500 mt-1">
-              No files are modified on disk until you confirm. Inspect proposed changes below.
+              No files are modified until you confirm. Inspect proposed changes below.
             </p>
           </div>
 
@@ -156,7 +201,6 @@ export function ReviewDialog({
           </div>
         </div>
 
-        {/* Changes List */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
           <div className="flex items-center justify-between text-xs text-stone-500 mb-2">
             <button
@@ -199,15 +243,15 @@ export function ReviewDialog({
                       )}
                     </button>
 
-                    {c.isNew ? (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 shrink-0">
-                        NEW
-                      </span>
-                    ) : (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 shrink-0">
-                        EDITED
-                      </span>
-                    )}
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                        c.isNew
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {c.isNew ? "NEW" : "EDITED"}
+                    </span>
 
                     <div className="min-w-0">
                       <div className="text-xs font-semibold text-stone-800 truncate font-mono">
@@ -298,7 +342,6 @@ export function ReviewDialog({
           )}
         </div>
 
-        {/* Dialog Footer */}
         <div className="p-4 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3 bg-stone-50/50">
           <div className="flex items-center gap-2">
             <button
@@ -323,6 +366,17 @@ export function ReviewDialog({
           </div>
 
           <div className="flex items-center gap-2">
+            {workspaceMode === "browser" && (
+              <button
+                type="button"
+                onClick={handleDownloadPatchedZip}
+                className="px-3 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 border border-stone-200 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" strokeWidth={1.9} />
+                Download ZIP
+              </button>
+            )}
+
             <button
               type="button"
               onClick={onClose}

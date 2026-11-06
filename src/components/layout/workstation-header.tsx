@@ -1,16 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   FolderCode,
   FileDiff,
   Cpu,
+  KeyRound,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Check,
+  X,
 } from "lucide-react";
 import { useWorkstationStore } from "@/store/workstation-store";
+import { toast } from "sonner";
 
 export interface WorkstationHeaderProps {
   activeRightTab: "files" | "diff";
@@ -35,11 +39,23 @@ export function WorkstationHeader({
   isRightPanelOpen,
   onToggleRightPanel,
 }: WorkstationHeaderProps) {
-  const { projectRoot } = useWorkstationStore();
+  const { userApiKey, setUserApiKey } = useWorkstationStore();
+  const [isKeyOpen, setIsKeyOpen] = useState(false);
+  const [draftKey, setDraftKey] = useState(userApiKey);
+
+  const handleSaveKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUserApiKey(draftKey);
+    setIsKeyOpen(false);
+    toast.success(
+      draftKey.trim()
+        ? "Saved personal Gemini API key to your browser"
+        : "Cleared personal API key (using server default)"
+    );
+  };
 
   return (
-    <header className="h-13 border-b border-stone-200/80 bg-white/80 px-3 sm:px-4 flex items-center justify-between select-none backdrop-blur-md z-10 shrink-0">
-      {/* Left controls: Sidebar toggle + Title */}
+    <header className="relative h-13 border-b border-stone-200/80 bg-white/80 px-3 sm:px-4 flex items-center justify-between select-none backdrop-blur-md z-20 shrink-0">
       <div className="flex items-center gap-2.5 min-w-0">
         <button
           type="button"
@@ -67,7 +83,6 @@ export function WorkstationHeader({
         </div>
       </div>
 
-      {/* Right controls: Review changes, tabs, right panel toggle */}
       <div className="flex items-center gap-2">
         {pendingChangesCount > 0 && onOpenReview && (
           <button
@@ -75,9 +90,27 @@ export function WorkstationHeader({
             onClick={onOpenReview}
             className="px-2.5 py-1 text-xs font-semibold bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 text-white rounded-lg shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <span>Review {pendingChangesCount} Change{pendingChangesCount === 1 ? "" : "s"}</span>
+            <span>
+              Review {pendingChangesCount} Change{pendingChangesCount === 1 ? "" : "s"}
+            </span>
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={() => {
+            setDraftKey(userApiKey);
+            setIsKeyOpen((prev) => !prev);
+          }}
+          className="px-2.5 py-1 text-xs font-medium text-stone-700 hover:bg-stone-100 border border-stone-200/80 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+          title="Configure personal Gemini API key (stored only in your browser)"
+        >
+          <KeyRound className="w-3.5 h-3.5 text-orange-500" strokeWidth={1.9} />
+          <span className="hidden sm:inline">API Key</span>
+          {userApiKey && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          )}
+        </button>
 
         {isRightPanelOpen && (
           <div className="flex items-center bg-stone-100/90 rounded-xl p-0.5 border border-stone-200/70">
@@ -109,7 +142,6 @@ export function WorkstationHeader({
           </div>
         )}
 
-        {/* Toggle Right Panel (Files & Diffs) */}
         <button
           type="button"
           onClick={onToggleRightPanel}
@@ -124,6 +156,59 @@ export function WorkstationHeader({
           )}
         </button>
       </div>
+
+      {isKeyOpen && (
+        <form
+          onSubmit={handleSaveKey}
+          className="absolute right-4 top-14 w-80 p-3.5 bg-white rounded-2xl shadow-xl border border-stone-200 z-50 space-y-2.5"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-stone-900">
+              Personal Gemini API Key (Optional)
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsKeyOpen(false)}
+              className="p-1 text-stone-400 hover:text-stone-700 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-[11px] text-stone-500 leading-relaxed">
+            Stored strictly in your browser&apos;s localStorage. Leave blank to use the server&apos;s configured key.
+          </p>
+          <input
+            type="password"
+            value={draftKey}
+            onChange={(e) => setDraftKey(e.target.value)}
+            placeholder="AIzaSy..."
+            className="w-full px-2.5 py-1.5 text-xs font-mono bg-stone-50 border border-stone-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-orange-500"
+          />
+          <div className="flex justify-end gap-1.5">
+            {draftKey && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDraftKey("");
+                  setUserApiKey("");
+                  setIsKeyOpen(false);
+                  toast.info("Cleared personal API key");
+                }}
+                className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+            <button
+              type="submit"
+              className="px-3 py-1 text-xs font-semibold bg-stone-900 hover:bg-stone-800 text-white rounded-lg flex items-center gap-1 cursor-pointer"
+            >
+              <Check className="w-3 h-3" />
+              Save
+            </button>
+          </div>
+        </form>
+      )}
     </header>
   );
 }

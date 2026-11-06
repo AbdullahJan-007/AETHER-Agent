@@ -11,6 +11,7 @@ export interface ProposedChange {
 
 export interface ToolContext {
   root: string;
+  virtualFiles?: Record<string, string>;
   signal?: AbortSignal;
   proposedChanges: Map<string, ProposedChange>;
   onProposedChange?: (change: ProposedChange) => void;

@@ -3,9 +3,10 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 127.0.0.1",
+    "dev": "next dev",
+    "dev:local": "next dev -H 127.0.0.1",
     "build": "next build",
-    "start": "next start -H 127.0.0.1",
+    "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

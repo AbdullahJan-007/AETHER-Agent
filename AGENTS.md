@@ -1,22 +1,11 @@
-# AGENTS.md — Guidelines for AI Coding Agents Operating on AETHER
+# AGENTS.md — Mandatory Operational Protocol for AI Agents
 
-## 1. Project Context
-AETHER is an on-premise AI Principal Engineer & UI/UX Workstation powered by a LangChain tool-using agent (`@langchain/google-genai` + `@langchain/core` on `gemini-2.5-flash`). It connects directly to local repositories on disk, explores files via sandboxed tools, stages proposed changes with explanations for visual diff review, stores conversations atomically on disk under `data/conversations/`, and runs whitelisted verification checks.
+## 1. System Identity
+AETHER is a **Hybrid Cloud + Local AI Principal Engineer & UI/UX Workstation** built with Next.js 16, React 19, TypeScript strict, Tailwind CSS v4 (Sunrise Light Theme), and LangChain (`@langchain/core`, `@langchain/google-genai`). It runs seamlessly on **Vercel Serverless** and on **Localhost across every IDE (VS Code, Cursor, Windsurf, WebStorm, Antigravity)** and OS (Windows, macOS, Linux).
 
-## 2. Core Operational Rules for Autonomous Agents
-- **Maintain Modular Architecture**: Never combine components into monolithic files. Keep files below 250–300 lines.
-- **Stage-Only File Proposals**: Agent tools (`stage_patch`) must **never** write directly to disk. Disk writes happen strictly when the user clicks Save via `/api/workspace` (`PatchEngine.applyPatch`), which automatically generates `.backup` snapshots.
-- **Respect PathGuard & Local Firewall**:
-  - Never perform file I/O without resolving and validating canonical paths through `PathGuard`.
-  - Every API route under `app/api/*` must call `validateLocalRequest(req)` from `src/lib/security/proxy.ts` to block DNS rebinding and cross-origin CSRF requests.
-  - Refuse `.env*` files in both `read_file` and `stage_patch`.
-- **Command Safety**: Only execute commands allowed by `CommandWhitelist` (`npm test`, `npm run lint`, `npm run build`, `npm run typecheck`, `git status`, `git diff`).
-- **Zero Placeholder / Demo Coding**: Write complete, reliable, scalable, humanized production code across any stack the user requests. Never emit `// TODO` or `// rest of code here`.
-- **Preserve Documentation & Tests**: Keep `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/PRD.md`, and the Vitest suite (`npm test`) in sync with all code changes.
-
-## 3. Technology Stack Conventions
-- Next.js 16 (App Router), React 19, TypeScript strict.
-- Tailwind CSS v4 with **Sunrise Ergonomic Light Tokens** (`--bg-gradient-start`, `--surface-card`, `--border-subtle`, `--text-primary`, `--brand-orange`, `--brand-rose`, `--brand-violet`) and the geometric **Prism** logo (`<AetherLogo />`).
-- LangChain (`@langchain/core`, `@langchain/google-genai`) and `zod` for structured tool schemas.
-- `lucide-react` for consistent 16px (`strokeWidth={1.9}`) iconography (no emoji in UI).
-- Vitest for unit, integration, and penetration testing.
+## 2. Non-Negotiable Engineering Rules
+1. **Follow `PROJECT_RULES.md`**: Read `PROJECT_RULES.md` before modifying any file. Keep every file under 250–300 lines.
+2. **Import Alias Standard**: Always use `@/...` (which maps to `./src/*`). Never use `@/src/...`.
+3. **Dual-Mode Tool Compatibility**: Every agent tool in `src/lib/agent/tools/` must support both `ctx.virtualFiles` (Browser Local Folder / Cloud Virtual Workspace) and `ctx.root` (Node `FsAdapter` disk mode).
+4. **Zero Unapproved Writes**: `stage_patch` only stages `ProposedChange` diffs. Actual writes happen exclusively via user confirmation in `ReviewDialog` (writing to the user's PC folder via `FileSystemDirectoryHandle`, downloading as `.zip`, or calling `/api/workspace` in localhost mode).
+5. **Security & Verification**: Never bypass `PathGuard`, `CommandWhitelist`, `SecretVault`, `Sanitizer`, or `validateLocalRequest` (`proxy.ts`). Always run `npm run typecheck` and `npm test` after every change.

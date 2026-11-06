@@ -13,5 +13,7 @@ export interface AgentRunOptions {
   mode: "build" | "architect" | "debug" | "review";
   messages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   attachedFiles?: Array<{ path: string; content: string }>;
+  virtualFiles?: Record<string, string>;
+  apiKey?: string;
   signal?: AbortSignal;
 }

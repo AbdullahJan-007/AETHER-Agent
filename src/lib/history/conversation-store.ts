@@ -1,4 +1,5 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import type {
   ConversationRecord,
@@ -9,18 +10,31 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class ConversationStore {
-  private static defaultDir = path.resolve(process.cwd(), "data", "conversations");
+  private static getDefaultDir(): string {
+    if (process.env.VERCEL) {
+      return path.join(os.tmpdir(), "aether-conversations");
+    }
+    return path.resolve(process.cwd(), "data", "conversations");
+  }
 
   public static isValidUUID(id: string): boolean {
     return typeof id === "string" && UUID_REGEX.test(id.trim());
   }
 
   public static getDir(customDir?: string): string {
-    const targetDir = customDir ? path.resolve(customDir) : this.defaultDir;
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
+    const targetDir = customDir ? path.resolve(customDir) : this.getDefaultDir();
+    try {
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      return targetDir;
+    } catch {
+      const fallbackDir = path.join(os.tmpdir(), "aether-conversations");
+      if (!fs.existsSync(fallbackDir)) {
+        fs.mkdirSync(fallbackDir, { recursive: true });
+      }
+      return fallbackDir;
     }
-    return targetDir;
   }
 
   public static listSummaries(customDir?: string): ConversationSummary[] {
@@ -58,7 +72,6 @@ export class ConversationStore {
       }
     }
 
-    // Sort newest updated first
     summaries.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     return summaries;
   }
@@ -86,11 +99,13 @@ export class ConversationStore {
 
     const dir = this.getDir(customDir);
     const targetPath = path.join(dir, `${record.id}.json`);
-    const tempPath = path.join(dir, `${record.id}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`);
+    const tempPath = path.join(
+      dir,
+      `${record.id}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`
+    );
 
     const json = JSON.stringify(record, null, 2);
 
-    // Atomic save: write to temp file then rename into place
     fs.writeFileSync(tempPath, json, "utf-8");
     fs.renameSync(tempPath, targetPath);
   }

@@ -36,6 +36,39 @@ export const searchCodeTool: AgentToolDef<z.infer<typeof schema>> = {
     const maxMatches = config.searchMaxMatches;
     const lowerQuery = args.query.toLowerCase();
 
+    if (ctx.virtualFiles) {
+      const matches: string[] = [];
+      for (const [rawPath, rawContent] of Object.entries(ctx.virtualFiles)) {
+        if (ctx.signal?.aborted) {
+          throw new DOMException("The operation was aborted.", "AbortError");
+        }
+        const cleanPath = rawPath.replace(/\\/g, "/").replace(/^\.?\//, "");
+        if (PathGuard.isSensitivePath(cleanPath)) continue;
+        const ext = path.extname(cleanPath).toLowerCase();
+        if (BINARY_EXTENSIONS.has(ext)) continue;
+        if (args.glob && !cleanPath.toLowerCase().includes(args.glob.toLowerCase())) continue;
+
+        const content = ctx.proposedChanges.get(cleanPath)?.content ?? rawContent;
+        const lines = content.split("\n");
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line.toLowerCase().includes(lowerQuery)) {
+            const truncatedLine = line.length > 200 ? line.slice(0, 200) + "..." : line;
+            matches.push(
+              `${cleanPath}:${i + 1}: ${SecretVault.redactSecrets(truncatedLine.trim())}`
+            );
+            if (matches.length >= maxMatches) {
+              matches.push(`... [Truncated: reached limit of ${maxMatches} matches]`);
+              return matches.join("\n");
+            }
+          }
+        }
+      }
+      return matches.length > 0
+        ? matches.join("\n")
+        : `No matches found for query: "${args.query}"`;
+    }
+
     try {
       const tree = await FsAdapter.listTree(ctx.root);
       const matches: string[] = [];
@@ -46,7 +79,6 @@ export const searchCodeTool: AgentToolDef<z.infer<typeof schema>> = {
         }
 
         if (item.type !== "file") continue;
-
         if (PathGuard.isSensitivePath(item.path)) continue;
 
         const ext = path.extname(item.path).toLowerCase();

@@ -19,26 +19,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { root, mode = "build", messages = [], attachedFiles = [] } = body;
-  const targetRoot =
-    typeof root === "string" && root.trim() !== "" && root.trim() !== "/"
-      ? root.trim()
-      : process.cwd();
+  const {
+    root,
+    mode = "build",
+    messages = [],
+    attachedFiles = [],
+    virtualFiles,
+    apiKey,
+  } = body;
 
-  const rootCheck = PathGuard.validateRoot(targetRoot);
-  if (!rootCheck.safe) {
-    return NextResponse.json(
-      { error: rootCheck.error || "Invalid workspace root directory." },
-      { status: 400 }
-    );
+  const hasVirtualFiles =
+    virtualFiles && typeof virtualFiles === "object" && !Array.isArray(virtualFiles);
+
+  let canonicalRoot = process.cwd();
+  if (!hasVirtualFiles) {
+    const targetRoot =
+      typeof root === "string" && root.trim() !== "" && root.trim() !== "/"
+        ? root.trim()
+        : process.cwd();
+
+    const rootCheck = PathGuard.validateRoot(targetRoot);
+    if (!rootCheck.safe) {
+      return NextResponse.json(
+        { error: rootCheck.error || "Invalid workspace root directory." },
+        { status: 400 }
+      );
+    }
+    canonicalRoot = rootCheck.canonicalPath;
   }
 
-  const canonicalRoot = rootCheck.canonicalPath;
   const opts: AgentRunOptions = {
     root: canonicalRoot,
     mode,
     messages,
     attachedFiles,
+    virtualFiles: hasVirtualFiles ? (virtualFiles as Record<string, string>) : undefined,
+    apiKey: typeof apiKey === "string" && apiKey.trim() !== "" ? apiKey.trim() : undefined,
     signal: request.signal,
   };
 

@@ -1,49 +1,38 @@
-# AETHER Product Requirements Document (PRD)
+# AETHER Product Requirements Document (PRD — Hybrid v2.0)
 
 ## 1. Product Vision
-AETHER is an on-premise AI Principal Engineer & UI/UX Workstation that empowers developers to build, architect, debug, and review production software directly on their local machine. Using a LangChain tool-using agent, persistent on-disk chat history, collapsible ergonomic panels, and a confirm-before-save diff review workflow, AETHER delivers autonomous engineering while keeping the user in 100% control of every disk write.
+AETHER is a **Hybrid Cloud + User-System AI Principal Engineer & UI/UX Workstation** that empowers developers to build, architect, debug, and review production software anywhere—either hosted globally for free on **Vercel** or running locally in any IDE (**VS Code, Cursor, Windsurf, WebStorm, Zed, Antigravity**). Using a LangChain tool-using agent, user-system persistent chat history, direct browser folder access (`showDirectoryPicker` / folder upload), collapsible ergonomic panels, and a confirm-before-save diff review workflow, AETHER delivers autonomous Staff-level engineering while keeping the user in 100% control of their files and data.
 
 ## 2. Target Users & Use Cases
 - **Full-Stack & Multi-Stack Engineers**: Building production web, backend, and systems software across TypeScript, React, Next.js, Vue, Python, Go, Rust, SQL/Prisma, and more.
 - **UI/UX Product Builders**: Designing accessible (WCAG AA/AAA), high-contrast user interfaces with structured color palettes and visual component previews.
-- **Security-Conscious Teams & Consultants**: Operating on confidential client repositories locally (`127.0.0.1`) with zero cloud code storage and strict secret redaction.
+- **Cross-Platform & Cloud Teams**: Accessing AETHER directly from a live Vercel URL while reading/writing their own PC's project folders and keeping their chat history stored privately on their own system.
 
 ---
 
 ## 3. Agile User Stories & Acceptance Criteria
 
-### Epic 1: Autonomous LangChain Tool Exploration
-- **US-1.1**: *As an engineer, I want the AI agent to autonomously list directories, search code, and read relevant files in my connected workspace so I don't have to attach every file manually.*
+### Epic 1: Hybrid Workspace Connection (Local Disk + Browser PC Folder)
+- **US-1.1**: *As an engineer visiting the hosted Vercel app or running locally, I want to open a folder directly from my PC (or connect a local disk path) so the AI agent can inspect and stage patches on my real project files.*
   - **Acceptance Criteria**:
-    - Agent has access to `list_files`, `read_file`, `search_code`, `stage_patch`, and `run_check`.
-    - Live tool progress is displayed in a humanized **Work Log** inside each assistant message.
-    - `.env*` files are strictly refused by `read_file` and `stage_patch`.
+    - Supports native browser folder selection (`window.showDirectoryPicker`), folder upload fallback (`webkitdirectory`), and starter virtual workspace out of the box on Vercel.
+    - All 5 LangChain tools (`list_files`, `read_file`, `search_code`, `stage_patch`, `run_check`) operate identically on `virtualFiles` (Cloud/Browser mode) and Node `fs` (Localhost Disk mode).
+    - `.env*` and private key files are strictly refused in both modes.
 
-### Epic 2: Confirm-Before-Save Diff Review with Explanations
-- **US-2.1**: *As an engineer, I want every proposed file change to include a clear explanation and a line-by-line diff in a review dialog before anything is saved to disk.*
+### Epic 2: Confirm-Before-Save Diff Review & ZIP Export
+- **US-2.1**: *As an engineer, I want every proposed file change to include a clear explanation and a line-by-line diff in a review dialog before anything is saved to my PC or downloaded as a ZIP.*
   - **Acceptance Criteria**:
-    - `stage_patch` requires a plain-sentence `reason` and never writes to disk.
-    - Calling `stage_patch` multiple times for the same file path replaces the earlier proposal.
-    - The **Review & Save** modal displays `NEW` / `EDITED` badges, `+ / -` line counts computed via LCS alignment, checkboxes per file, and **Save Selected**, **Discard All**, and **Ask AI to Revise** actions.
-    - Saving creates a `.backup` copy before overwriting any existing file.
+    - `stage_patch` requires a plain-sentence `reason` and never modifies files without confirmation.
+    - **Review & Save** displays `NEW` / `EDITED` badges, `+ / -` line counts computed via LCS alignment, checkboxes per file, **Save Selected** (writes to local disk or PC folder handle with `.backup`), **Download Patched ZIP**, **Discard All**, and **Ask AI to Revise**.
 
-### Epic 3: On-Disk Persistent Conversation History
-- **US-3.1**: *As an engineer, I want my chat sessions saved on disk so they survive browser restarts and clears.*
+### Epic 3: User-System Persistent Conversation History & Optional BYOK
+- **US-3.1**: *As an engineer, I want my chat history stored on my own system so my conversations remain private and persist across browser reloads even on the free Vercel deployment.*
   - **Acceptance Criteria**:
-    - Conversations are saved atomically as JSON files under `data/conversations/<uuid>.json`.
-    - Left sidebar groups conversations into *Today*, *Yesterday*, and *Older* with search, inline rename, delete confirmation, and `Ctrl + N` shortcut.
+    - Conversations persist in browser `localStorage` (`aether:conversations:v1`) on the user's system and sync with `/api/conversations` (`data/conversations/` locally or `/tmp` on Vercel).
+    - Users can optionally enter their own Gemini API key in the header settings modal (stored only on their browser) or use the server's configured `GOOGLE_API_KEY`.
 
-### Epic 4: Sunrise Ergonomic UI & Collapsible Workspace Panels
-- **US-4.1**: *As an engineer, I want a warm, high-contrast light interface with collapsible left and right panels so I can focus on chat or code inspection on demand.*
+### Epic 4: Sunrise Ergonomic UI & Cross-IDE Compatibility
+- **US-4.1**: *As an engineer, I want a warm, high-contrast light interface with collapsible left and right panels and zero IDE errors in VS Code, Cursor, or Windsurf.*
   - **Acceptance Criteria**:
     - Sunrise palette (`#fff7ed → #fef2f2 → #f5f3ff`) with the geometric **Prism** logo (`<AetherLogo />`) and zero emoji.
-    - Top-left header button (and `Ctrl + B`) toggles the Chat History Sidebar.
-    - Top-right header button toggles the Workspace Files/Diffs Panel.
-
----
-
-## 4. Non-Functional Requirements
-- **Zero Placeholder Code**: System prompt enforces complete, production-ready code with zero `// TODO` or demo shortcuts.
-- **Configurable Local Quotas**: Rate limiting (`AETHER_RPM`), step limits (`AETHER_MAX_STEPS`), and file budgets are configurable via `.env.local`.
-- **Maintainability**: Modular files kept under 250–300 lines with strict TypeScript compilation (`npm run typecheck`).
-- **Verification**: 61 automated unit and security tests across 11 test suites (`npm test`).
+    - Unified `@/*` path imports and `.vscode/settings.json` ensure zero red squiggles in every IDE.

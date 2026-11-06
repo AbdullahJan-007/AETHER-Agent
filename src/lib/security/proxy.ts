@@ -23,26 +23,54 @@ function extractHostName(hostHeader: string): string {
     return trimmed;
   }
 
-  // Plain IPv6 without port (e.g. "::1")
   if (trimmed === "::1") return "::1";
 
   return trimmed.split(":")[0];
 }
 
+function isAllowedHost(hostName: string): boolean {
+  if (!hostName) return false;
+  if (LOCAL_HOSTS.has(hostName)) return true;
+
+  // Allow official Vercel deployments (*.vercel.app)
+  if (hostName.endsWith(".vercel.app")) return true;
+
+  // Allow custom configured deployment domains
+  const envHosts = [
+    process.env.VERCEL_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.NEXT_PUBLIC_APP_URL,
+  ]
+    .filter(Boolean)
+    .map((val) => {
+      const raw = String(val).trim().toLowerCase();
+      try {
+        return raw.includes("://") ? new URL(raw).hostname.toLowerCase() : extractHostName(raw);
+      } catch {
+        return extractHostName(raw);
+      }
+    });
+
+  return envHosts.includes(hostName);
+}
+
 /**
- * Validates that an incoming HTTP request originated locally and prevents cross-site
- * request forgery (CSRF) and DNS rebinding attacks on the local workstation.
+ * Validates that an incoming HTTP request originated from localhost or a trusted
+ * same-origin Vercel deployment, preventing CSRF and DNS rebinding attacks.
  */
 export function validateLocalRequest(request: Request): RequestValidationResult {
   const host = request.headers.get("host") || "";
   const hostName = extractHostName(host);
 
-  // 1. Host header validation (DNS Rebinding protection)
-  if (!LOCAL_HOSTS.has(hostName)) {
+  // 1. Host header validation (DNS Rebinding & unauthorized host protection)
+  if (!isAllowedHost(hostName)) {
     return {
       allowed: false,
       response: NextResponse.json(
-        { error: "Forbidden: AETHER only accepts connections from localhost/127.0.0.1/[::1]." },
+        {
+          error:
+            "Forbidden: AETHER only accepts connections from localhost/127.0.0.1/[::1] or authorized Vercel deployments.",
+        },
         { status: 403 }
       ),
     };
@@ -89,12 +117,15 @@ export function validateLocalRequest(request: Request): RequestValidationResult 
     }
     try {
       const url = new URL(origin);
-      const originHost = url.hostname.toLowerCase();
-      if (!LOCAL_HOSTS.has(originHost)) {
+      const originHost = extractHostName(url.host);
+      const isLocalOrigin = LOCAL_HOSTS.has(originHost) && LOCAL_HOSTS.has(hostName);
+      const isSameCloudOrigin = originHost === hostName && isAllowedHost(hostName);
+
+      if (!isLocalOrigin && !isSameCloudOrigin) {
         return {
           allowed: false,
           response: NextResponse.json(
-            { error: "Forbidden: Cross-origin requests from non-local sites are blocked." },
+            { error: "Forbidden: Cross-origin requests from external sites are blocked." },
             { status: 403 }
           ),
         };

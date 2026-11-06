@@ -15,6 +15,8 @@ interface SendMessageOptions {
   mode: "build" | "architect" | "debug" | "review";
   existingMessages: ChatMessageRecord[];
   attachedFiles?: Array<{ path: string; content: string }>;
+  virtualFiles?: Record<string, string>;
+  apiKey?: string;
   onUpdate: (messages: ChatMessageRecord[]) => void;
   onFinished: (messages: ChatMessageRecord[], proposals: ProposedChange[]) => void;
 }
@@ -40,6 +42,8 @@ export function useChatSession() {
       mode,
       existingMessages,
       attachedFiles = [],
+      virtualFiles,
+      apiKey,
       onUpdate,
       onFinished,
     }: SendMessageOptions) => {
@@ -87,6 +91,8 @@ export function useChatSession() {
               content: m.content,
             })),
             attachedFiles,
+            virtualFiles,
+            apiKey,
           }),
         });
 

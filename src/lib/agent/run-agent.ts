@@ -29,6 +29,7 @@ export async function* runAgent(
 
   const ctx: ToolContext = {
     root: opts.root,
+    virtualFiles: opts.virtualFiles,
     signal: opts.signal,
     proposedChanges,
     onProposedChange: (change) => {
@@ -41,7 +42,7 @@ export async function* runAgent(
 
   let model: any;
   try {
-    const baseModel = injectedModel || createAgentModel();
+    const baseModel = injectedModel || createAgentModel(opts.apiKey);
     model = baseModel.bindTools ? baseModel.bindTools(tools) : baseModel;
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

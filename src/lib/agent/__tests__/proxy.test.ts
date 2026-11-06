@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { validateLocalRequest } from "../../security/proxy";
 
-describe("Proxy Security - validateLocalRequest", () => {
+describe("Proxy Security - validateLocalRequest (Localhost + Vercel Hybrid)", () => {
   it("allows requests from localhost, 127.0.0.1, and IPv6 [::1]:3000", () => {
     const req1 = new Request("http://localhost:3000/api/workspace", {
       headers: { host: "localhost:3000" },
@@ -19,7 +19,33 @@ describe("Proxy Security - validateLocalRequest", () => {
     expect(validateLocalRequest(req3).allowed).toBe(true);
   });
 
-  it("blocks requests with non-local Host headers (DNS rebinding)", () => {
+  it("allows same-origin requests on official *.vercel.app deployments", () => {
+    const req = new Request("https://aether-agent.vercel.app/api/agent", {
+      method: "POST",
+      headers: {
+        host: "aether-agent.vercel.app",
+        origin: "https://aether-agent.vercel.app",
+        "content-type": "application/json",
+      },
+    });
+    expect(validateLocalRequest(req).allowed).toBe(true);
+  });
+
+  it("blocks cross-origin requests between two different *.vercel.app subdomains", () => {
+    const req = new Request("https://aether-agent.vercel.app/api/agent", {
+      method: "POST",
+      headers: {
+        host: "aether-agent.vercel.app",
+        origin: "https://attacker-app.vercel.app",
+        "content-type": "application/json",
+      },
+    });
+    const res = validateLocalRequest(req);
+    expect(res.allowed).toBe(false);
+    expect(res.response?.status).toBe(403);
+  });
+
+  it("blocks requests with unauthorized Host headers (DNS rebinding)", () => {
     const req = new Request("http://evil.com/api/workspace", {
       headers: { host: "evil.com" },
     });

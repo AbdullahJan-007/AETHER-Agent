@@ -31,12 +31,43 @@ export const stagePatchTool: AgentToolDef<z.infer<typeof schema>> = {
       return "Error: Creating or modifying .env, private key, or .git files is strictly prohibited for security.";
     }
 
+    const config = getAgentConfig();
+
+    if (ctx.virtualFiles) {
+      const relPath = args.path.replace(/\\/g, "/").replace(/^\.?\//, "").trim();
+      if (relPath.includes("..") || relPath.includes("\0") || relPath.startsWith("/")) {
+        return "Error: Path traversal outside workspace root is strictly prohibited.";
+      }
+      if (PathGuard.isSensitivePath(relPath)) {
+        return "Error: Creating or modifying .env, private key, or .git files is strictly prohibited for security.";
+      }
+      if (!ctx.proposedChanges.has(relPath) && ctx.proposedChanges.size >= config.maxProposals) {
+        return `Error: Proposal limit of ${config.maxProposals} files reached for this request.`;
+      }
+
+      const original = ctx.virtualFiles[relPath] ?? "";
+      const isNew = !(relPath in ctx.virtualFiles);
+      const diff = DiffCalculator.calculateDiff(relPath, original, args.content);
+
+      const proposed: ProposedChange = {
+        path: relPath,
+        isNew,
+        reason: args.reason,
+        diff,
+        content: args.content,
+      };
+
+      ctx.proposedChanges.set(relPath, proposed);
+      ctx.onProposedChange?.(proposed);
+
+      return `Staged changes for "${relPath}" (+${diff.additions} / -${diff.deletions}). The file has NOT been written yet; the user will review and save it explicitly.`;
+    }
+
     const validation = PathGuard.validatePath(args.path, ctx.root);
     if (!validation.safe) {
       return `Error: ${validation.error || "Path validation failed."}`;
     }
 
-    const config = getAgentConfig();
     const relPath = path
       .relative(ctx.root, validation.canonicalPath)
       .replace(/\\/g, "/");
@@ -75,8 +106,6 @@ export const stagePatchTool: AgentToolDef<z.infer<typeof schema>> = {
       content: args.content,
     };
 
-    // Storing in map ensures that calling stage_patch twice for the same path
-    // replaces the earlier proposal with the later one.
     ctx.proposedChanges.set(relPath, proposed);
     ctx.onProposedChange?.(proposed);
 

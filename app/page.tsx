@@ -10,7 +10,7 @@ import {
 } from "@/components/workspace";
 import { TerminalDrawer } from "@/components/terminal";
 import { MessageList, ChatInput } from "@/components/chat";
-import { useWorkstationStore } from "@/store/workstation-store";
+import { useWorkstationStore, workstationStore } from "@/store/workstation-store";
 import { useConversations } from "@/hooks/use-conversations";
 import { useChatSession } from "@/hooks/use-chat-session";
 import type { AgentMode } from "@/lib/agent/system-prompt";
@@ -20,6 +20,9 @@ import { toast } from "sonner";
 export default function WorkstationPage() {
   const {
     projectRoot,
+    workspaceMode,
+    virtualFiles,
+    userApiKey,
     selectedFile,
     selectedFileContent,
     addStagedDiff,
@@ -49,7 +52,6 @@ export default function WorkstationPage() {
   const { isStreaming, proposedChanges, setProposedChanges, sendMessage, stop } =
     useChatSession();
 
-  // Initialize a new chat if none exists
   useEffect(() => {
     if (!activeId && conversations.length > 0) {
       selectConversation(conversations[0].id);
@@ -58,7 +60,6 @@ export default function WorkstationPage() {
     }
   }, [activeId, conversations, selectConversation, newChat, projectRoot]);
 
-  // Keyboard shortcut Ctrl+B / Cmd+B to toggle left sidebar
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
@@ -70,7 +71,6 @@ export default function WorkstationPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Sync active proposals when proposed changes stream in
   useEffect(() => {
     if (proposedChanges.length > 0) {
       setActiveProposals(proposedChanges);
@@ -82,6 +82,16 @@ export default function WorkstationPage() {
 
   const refreshWorkspaceTree = useCallback(
     async (savedPaths: string[] = []) => {
+      if (workspaceMode === "browser") {
+        if (selectedFile && savedPaths.includes(selectedFile)) {
+          const latest = workstationStore.getState().virtualFiles[selectedFile];
+          if (latest !== undefined) {
+            setSelectedFile(selectedFile, latest);
+          }
+        }
+        return;
+      }
+
       const targetRoot = projectRoot || ".";
       try {
         const res = await fetch(
@@ -92,7 +102,6 @@ export default function WorkstationPage() {
           setFileTree(data.tree);
         }
 
-        // If the currently viewed file was updated, reload its contents
         if (selectedFile && savedPaths.includes(selectedFile)) {
           const readRes = await fetch(
             `/api/workspace?action=read&file=${encodeURIComponent(
@@ -108,7 +117,7 @@ export default function WorkstationPage() {
         // Ignore background refresh error
       }
     },
-    [projectRoot, selectedFile, setFileTree, setSelectedFile]
+    [workspaceMode, projectRoot, selectedFile, setFileTree, setSelectedFile]
   );
 
   const currentMessages = activeConversation?.messages || [];
@@ -126,6 +135,8 @@ export default function WorkstationPage() {
       mode,
       existingMessages: currentMessages,
       attachedFiles: attachments.map((a) => ({ path: a.name, content: a.content })),
+      virtualFiles: workspaceMode === "browser" ? virtualFiles : undefined,
+      apiKey: userApiKey || undefined,
       onUpdate: (updatedMessages) => {
         if (activeConversation) {
           setActiveConversation({
@@ -172,7 +183,6 @@ export default function WorkstationPage() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-transparent select-none text-stone-900 font-sans">
-      {/* Collapsible Left Sidebar */}
       {isLeftSidebarOpen && (
         <Sidebar
           conversations={conversations}
@@ -185,7 +195,6 @@ export default function WorkstationPage() {
         />
       )}
 
-      {/* Main Workspace Layout */}
       <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
         <WorkstationHeader
           activeRightTab={rightTab}
@@ -200,7 +209,6 @@ export default function WorkstationPage() {
         />
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Center Chat Column */}
           <main className="flex flex-col flex-1 min-w-0 border-r border-stone-200/80 bg-white/40 backdrop-blur-xs">
             <ProjectSwitcher />
 
@@ -223,7 +231,6 @@ export default function WorkstationPage() {
             />
           </main>
 
-          {/* Collapsible Right Panel: Files & Staged Diff Inspector */}
           {isRightPanelOpen && (
             <aside className="flex flex-col w-80 sm:w-96 shrink-0 bg-white/80 border-stone-200/80">
               {rightTab === "files" ? (
@@ -246,7 +253,6 @@ export default function WorkstationPage() {
         </div>
       </div>
 
-      {/* Confirm-Before-Save Review Dialog */}
       <ReviewDialog
         isOpen={isReviewOpen}
         onClose={() => setIsReviewOpen(false)}

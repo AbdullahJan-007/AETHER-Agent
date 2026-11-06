@@ -71,6 +71,9 @@ export class FsAdapter {
         }
 
         const relativePath = path.relative(normalizedRoot, fullPath).replace(/\\/g, "/");
+        if (PathGuard.isSensitivePath(relativePath)) {
+          continue;
+        }
 
         if (entry.isDirectory()) {
           if (visitedPaths.has(realEntryPath)) {
@@ -108,6 +111,9 @@ export class FsAdapter {
    * Safely reads a file from the workspace, validating against path traversal and symlink escapes.
    */
   public static async readFile(filePath: string, rootPath: string): Promise<string> {
+    if (PathGuard.isSensitivePath(filePath)) {
+      throw new Error(`Security refusal: Reading sensitive file "${filePath}" is prohibited.`);
+    }
     const validation = PathGuard.validatePath(filePath, rootPath);
     if (!validation.safe) {
       throw new Error(validation.error || "Path validation failed");

@@ -1,19 +1,36 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileCode, FileJson, FileText, Folder, ChevronRight, ChevronDown, Search } from "lucide-react";
+import { FileCode, FileJson, FileText, Folder, Search } from "lucide-react";
 import { useWorkstationStore } from "@/store/workstation-store";
 import { toast } from "sonner";
 
 export function FileTree() {
-  const { fileTree, projectRoot, selectedFile, setSelectedFile } = useWorkstationStore();
+  const {
+    fileTree,
+    projectRoot,
+    workspaceMode,
+    virtualFiles,
+    selectedFile,
+    setSelectedFile,
+  } = useWorkstationStore();
   const [filter, setFilter] = useState("");
 
   const handleSelectFile = async (path: string) => {
+    if (workspaceMode === "browser") {
+      const content = virtualFiles[path];
+      if (content !== undefined) {
+        setSelectedFile(path, content);
+      } else {
+        toast.error("File not found in virtual workspace");
+      }
+      return;
+    }
+
     try {
       const res = await fetch(
         `/api/workspace?action=read&file=${encodeURIComponent(path)}&root=${encodeURIComponent(
-          projectRoot
+          projectRoot || "."
         )}`
       );
       const data = await res.json();

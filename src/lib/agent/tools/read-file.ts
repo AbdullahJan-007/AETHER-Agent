@@ -27,6 +27,26 @@ export const readFileTool: AgentToolDef<z.infer<typeof schema>> = {
       return "Error: Access to .env, private key, or .git credential files is strictly prohibited for security.";
     }
 
+    if (ctx.virtualFiles) {
+      const normPath = args.path.replace(/\\/g, "/").replace(/^\.?\//, "").trim();
+      if (normPath.includes("..") || normPath.includes("\0") || normPath.startsWith("/")) {
+        return "Error: Path traversal outside workspace root is strictly prohibited.";
+      }
+      if (PathGuard.isSensitivePath(normPath)) {
+        return "Error: Access to .env, private key, or .git credential files is strictly prohibited for security.";
+      }
+
+      const rawContent =
+        ctx.proposedChanges.get(normPath)?.content ?? ctx.virtualFiles[normPath];
+      if (rawContent === undefined) {
+        return `Error reading file: File not found: ${normPath}`;
+      }
+
+      const config = getAgentConfig();
+      const scrubbed = SecretVault.redactSecrets(rawContent);
+      return Sanitizer.wrapUntrustedContext(normPath, scrubbed, config.readFileMaxBytes);
+    }
+
     const validation = PathGuard.validatePath(args.path, ctx.root);
     if (!validation.safe) {
       return `Error: ${validation.error || "Path validation failed."}`;

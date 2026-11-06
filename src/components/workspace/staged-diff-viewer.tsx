@@ -1,14 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, X, FileDiff, CheckCheck, FileCode } from "lucide-react";
+import { Check, X, FileDiff, FileCode } from "lucide-react";
 import { useWorkstationStore } from "@/store/workstation-store";
+import { applyChangesToBrowserDirectory } from "@/lib/workspace/browser-fs";
 import type { StagedDiff } from "@/lib/workspace/diff-calculator";
 import { toast } from "sonner";
 
 export function StagedDiffViewer() {
-  const { stagedDiffs, projectRoot, removeStagedDiff, clearStagedDiffs, setFileTree } =
-    useWorkstationStore();
+  const {
+    stagedDiffs,
+    projectRoot,
+    workspaceMode,
+    dirHandle,
+    updateVirtualFiles,
+    removeStagedDiff,
+  } = useWorkstationStore();
   const [activeDiffIndex, setActiveDiffIndex] = useState(0);
   const [isApplying, setIsApplying] = useState(false);
 
@@ -43,6 +50,18 @@ export function StagedDiffViewer() {
     setIsApplying(true);
     try {
       const fullContent = getFullContent(diff);
+      if (workspaceMode === "browser") {
+        updateVirtualFiles({ [diff.filePath]: fullContent });
+        if (dirHandle) {
+          await applyChangesToBrowserDirectory(dirHandle, [
+            { filePath: diff.filePath, proposedContent: fullContent },
+          ]);
+        }
+        toast.success(`Applied changes to ${diff.filePath}`);
+        removeStagedDiff(diff.filePath);
+        return;
+      }
+
       const res = await fetch("/api/workspace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

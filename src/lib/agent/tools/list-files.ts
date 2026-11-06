@@ -1,5 +1,4 @@
 import { z } from "zod";
-import path from "path";
 import { FsAdapter } from "../../workspace/fs-adapter";
 import { PathGuard } from "../../security/path-guard";
 import type { AgentToolDef, ToolContext } from "./types";
@@ -20,6 +19,38 @@ export const listFilesTool: AgentToolDef<z.infer<typeof schema>> = {
     return args.dir ? `List files in ${args.dir}` : "List project files";
   },
   async run(args, ctx: ToolContext) {
+    if (ctx.virtualFiles) {
+      const prefix = args.dir
+        ? args.dir.replace(/\\/g, "/").replace(/^\.?\//, "").replace(/\/+$/, "")
+        : "";
+      if (prefix.includes("..") || prefix.includes("\0")) {
+        return "Error: Path traversal is not permitted.";
+      }
+
+      const dirs = new Set<string>();
+      const lines: string[] = [];
+      const sorted = Object.keys(ctx.virtualFiles).sort();
+
+      for (const rawPath of sorted) {
+        const clean = rawPath.replace(/\\/g, "/").replace(/^\.?\//, "");
+        if (PathGuard.isSensitivePath(clean)) continue;
+        if (prefix && !clean.startsWith(`${prefix}/`) && clean !== prefix) continue;
+
+        const parts = clean.split("/");
+        for (let i = 1; i < parts.length; i++) {
+          const dirPath = parts.slice(0, i).join("/");
+          if ((!prefix || dirPath.startsWith(prefix)) && !dirs.has(dirPath)) {
+            dirs.add(dirPath);
+            lines.push(`[DIR] ${dirPath}`);
+          }
+        }
+        const bytes = Buffer.byteLength(ctx.virtualFiles[rawPath] ?? "", "utf-8");
+        lines.push(`[FILE] ${clean} (${bytes} bytes)`);
+      }
+
+      return lines.length > 0 ? lines.slice(0, 500).join("\n") : "No files found in directory.";
+    }
+
     let targetDir = ctx.root;
     if (args.dir && args.dir.trim() !== "") {
       const check = PathGuard.validatePath(args.dir, ctx.root);
