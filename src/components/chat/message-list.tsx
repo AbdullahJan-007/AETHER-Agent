@@ -2,10 +2,10 @@
 
 import React, { useRef, useEffect } from "react";
 import { User, Copy, Check, ShieldCheck, Eye } from "lucide-react";
-import { AetherLogo } from "@/src/components/ui/aether-logo";
+import { AetherLogo } from "@/components/ui/aether-logo";
 import { WorkLog } from "./work-log";
-import type { ChatMessageRecord } from "@/src/lib/types/conversation";
-import type { ProposedChange } from "@/src/lib/agent/tools/types";
+import type { ChatMessageRecord } from "@/lib/types/conversation";
+import type { ProposedChange } from "@/lib/agent/tools/types";
 import { toast } from "sonner";
 
 export interface MessageListProps {

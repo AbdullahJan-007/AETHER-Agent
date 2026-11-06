@@ -1,25 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Sidebar, WorkstationHeader } from "@/src/components/layout";
+import React, { useState, useEffect, useCallback } from "react";
+import { Sidebar, WorkstationHeader } from "@/components/layout";
 import {
   ProjectSwitcher,
   FileTree,
   StagedDiffViewer,
   ReviewDialog,
-} from "@/src/components/workspace";
-import { TerminalDrawer } from "@/src/components/terminal";
-import { MessageList, ChatInput } from "@/src/components/chat";
+} from "@/components/workspace";
+import { TerminalDrawer } from "@/components/terminal";
+import { MessageList, ChatInput } from "@/components/chat";
 import { useWorkstationStore } from "@/store/workstation-store";
-import { useConversations } from "@/src/hooks/use-conversations";
-import { useChatSession } from "@/src/hooks/use-chat-session";
-import type { AgentMode } from "@/src/lib/agent/system-prompt";
-import type { ProposedChange } from "@/src/lib/agent/tools/types";
+import { useConversations } from "@/hooks/use-conversations";
+import { useChatSession } from "@/hooks/use-chat-session";
+import type { AgentMode } from "@/lib/agent/system-prompt";
+import type { ProposedChange } from "@/lib/agent/tools/types";
 import { toast } from "sonner";
 
 export default function WorkstationPage() {
-  const { projectRoot, selectedFile, selectedFileContent, addStagedDiff } =
-    useWorkstationStore();
+  const {
+    projectRoot,
+    selectedFile,
+    selectedFileContent,
+    addStagedDiff,
+    clearStagedDiffs,
+    setFileTree,
+    setSelectedFile,
+  } = useWorkstationStore();
   const [activeMode, setActiveMode] = useState<AgentMode>("build");
   const [rightTab, setRightTab] = useState<"files" | "diff">("files");
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -47,7 +54,7 @@ export default function WorkstationPage() {
     if (!activeId && conversations.length > 0) {
       selectConversation(conversations[0].id);
     } else if (!activeId && conversations.length === 0) {
-      newChat(projectRoot || "", "build");
+      newChat(projectRoot || ".", "build");
     }
   }, [activeId, conversations, selectConversation, newChat, projectRoot]);
 
@@ -73,6 +80,37 @@ export default function WorkstationPage() {
     }
   }, [proposedChanges, addStagedDiff]);
 
+  const refreshWorkspaceTree = useCallback(
+    async (savedPaths: string[] = []) => {
+      const targetRoot = projectRoot || ".";
+      try {
+        const res = await fetch(
+          `/api/workspace?action=tree&root=${encodeURIComponent(targetRoot)}`
+        );
+        const data = await res.json();
+        if (data.success && Array.isArray(data.tree)) {
+          setFileTree(data.tree);
+        }
+
+        // If the currently viewed file was updated, reload its contents
+        if (selectedFile && savedPaths.includes(selectedFile)) {
+          const readRes = await fetch(
+            `/api/workspace?action=read&file=${encodeURIComponent(
+              selectedFile
+            )}&root=${encodeURIComponent(targetRoot)}`
+          );
+          const readData = await readRes.json();
+          if (readData.success) {
+            setSelectedFile(selectedFile, readData.content);
+          }
+        }
+      } catch {
+        // Ignore background refresh error
+      }
+    },
+    [projectRoot, selectedFile, setFileTree, setSelectedFile]
+  );
+
   const currentMessages = activeConversation?.messages || [];
 
   const handleSendMessage = (
@@ -80,7 +118,7 @@ export default function WorkstationPage() {
     mode: AgentMode,
     attachments: Array<{ name: string; content: string }>
   ) => {
-    const root = projectRoot || process.cwd();
+    const root = projectRoot || ".";
 
     sendMessage({
       content: text,
@@ -92,6 +130,7 @@ export default function WorkstationPage() {
         if (activeConversation) {
           setActiveConversation({
             ...activeConversation,
+            projectRoot: root,
             messages: updatedMessages,
             updatedAt: new Date().toISOString(),
           });
@@ -101,6 +140,7 @@ export default function WorkstationPage() {
         if (activeConversation) {
           const updated = {
             ...activeConversation,
+            projectRoot: root,
             messages: finishedMessages,
             updatedAt: new Date().toISOString(),
           };
@@ -126,7 +166,8 @@ export default function WorkstationPage() {
   const handleSaved = (savedPaths: string[]) => {
     setProposedChanges([]);
     setActiveProposals([]);
-    toast.success(`Successfully saved ${savedPaths.length} file(s) to disk.`);
+    clearStagedDiffs();
+    refreshWorkspaceTree(savedPaths);
   };
 
   return (
@@ -137,7 +178,7 @@ export default function WorkstationPage() {
           conversations={conversations}
           activeId={activeId}
           onSelectConversation={selectConversation}
-          onNewChat={() => newChat(projectRoot || "", activeMode)}
+          onNewChat={() => newChat(projectRoot || ".", activeMode)}
           onRenameConversation={renameConversation}
           onDeleteConversation={deleteConversation}
           currentProject={projectRoot}
@@ -210,11 +251,12 @@ export default function WorkstationPage() {
         isOpen={isReviewOpen}
         onClose={() => setIsReviewOpen(false)}
         changes={activeProposals}
-        projectRoot={projectRoot || process.cwd()}
+        projectRoot={projectRoot || "."}
         onSaved={handleSaved}
         onDiscard={() => {
           setActiveProposals([]);
           setProposedChanges([]);
+          clearStagedDiffs();
           setIsReviewOpen(false);
           toast.info("Proposed changes discarded.");
         }}

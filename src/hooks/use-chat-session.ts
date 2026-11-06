@@ -4,9 +4,9 @@ import { useState, useRef, useCallback } from "react";
 import type {
   ChatMessageRecord,
   ToolCallRecord,
-} from "@/src/lib/types/conversation";
-import type { ProposedChange } from "@/src/lib/agent/tools/types";
-import type { AgentEvent } from "@/src/lib/agent/events";
+} from "@/lib/types/conversation";
+import type { ProposedChange } from "@/lib/agent/tools/types";
+import type { AgentEvent } from "@/lib/agent/events";
 import { toast } from "sonner";
 
 interface SendMessageOptions {

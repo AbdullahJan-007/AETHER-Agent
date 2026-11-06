@@ -13,7 +13,7 @@ import {
   ChevronRight,
   ShieldCheck,
 } from "lucide-react";
-import type { ProposedChange } from "@/src/lib/agent/tools/types";
+import type { ProposedChange } from "@/lib/agent/tools/types";
 import { toast } from "sonner";
 
 interface ReviewDialogProps {

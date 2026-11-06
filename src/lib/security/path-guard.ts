@@ -10,6 +10,13 @@ export interface PathValidationResult {
 export class PathGuard {
   private static readonly WINDOWS_RESERVED_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 
+  private static readonly SENSITIVE_BASENAMES = [
+    /^\.env($|\..*)/i,
+    /^\.(npmrc|pypirc|netrc)$/i,
+    /^(id_rsa|id_ed25519|id_ecdsa|id_dsa)$/i,
+    /\.(pem|key|pfx|p12|kdbx|jks)$/i,
+  ];
+
   // OS Critical System Directories that must never be designated as project root
   private static readonly RESTRICTED_SYSTEM_ROOTS = [
     /^[a-zA-Z]:[\\/]?$/i, // Drive roots like C:\ or D:\
@@ -21,6 +28,25 @@ export class PathGuard {
     /^\/$/, // Root directory in Unix
     /^\/(etc|usr|var|bin|sbin|proc|sys|dev|root)($|\/)/i,
   ];
+
+  /**
+   * Checks whether a relative or absolute path targets sensitive credentials,
+   * private keys, or internal .git repository hooks/configs.
+   */
+  public static isSensitivePath(targetPath: string): boolean {
+    if (!targetPath || typeof targetPath !== "string") return false;
+    const normalized = targetPath.replace(/\\/g, "/");
+    const segments = normalized.split("/").filter(Boolean);
+
+    for (const seg of segments) {
+      if (seg.toLowerCase() === ".git" || seg.toLowerCase() === ".ssh") {
+        return true;
+      }
+    }
+
+    const base = path.basename(normalized);
+    return this.SENSITIVE_BASENAMES.some((pattern) => pattern.test(base));
+  }
 
   /**
    * Validates that a workspace root is safe and does not target system-critical directories.

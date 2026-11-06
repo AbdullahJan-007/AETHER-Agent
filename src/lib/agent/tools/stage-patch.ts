@@ -27,9 +27,8 @@ export const stagePatchTool: AgentToolDef<z.infer<typeof schema>> = {
       return "Error: File path is required.";
     }
 
-    const baseName = path.basename(args.path);
-    if (/^\.env($|\..*)/i.test(baseName)) {
-      return "Error: Creating or modifying .env files is strictly prohibited for security.";
+    if (PathGuard.isSensitivePath(args.path)) {
+      return "Error: Creating or modifying .env, private key, or .git files is strictly prohibited for security.";
     }
 
     const validation = PathGuard.validatePath(args.path, ctx.root);
@@ -41,6 +40,10 @@ export const stagePatchTool: AgentToolDef<z.infer<typeof schema>> = {
     const relPath = path
       .relative(ctx.root, validation.canonicalPath)
       .replace(/\\/g, "/");
+
+    if (PathGuard.isSensitivePath(relPath)) {
+      return "Error: Creating or modifying .env, private key, or .git files is strictly prohibited for security.";
+    }
 
     if (
       !ctx.proposedChanges.has(relPath) &&

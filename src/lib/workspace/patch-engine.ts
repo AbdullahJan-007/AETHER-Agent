@@ -16,6 +16,7 @@ export class PatchEngine {
 
   /**
    * Applies the new content to disk safely, creating a .backup file first.
+   * Hardened against symlink escapes and sensitive file overwrites (.env, .git, keys).
    * SERVER-SIDE ONLY: Requires Node.js fs.
    */
   public static async applyPatch(
@@ -29,6 +30,56 @@ export class PatchEngine {
     }
 
     const targetFile = validation.canonicalPath;
+    const rootCheck = PathGuard.validateRoot(rootPath);
+    if (!rootCheck.safe) {
+      return { success: false, backupPath: "", error: rootCheck.error };
+    }
+
+    const relToRoot = path.relative(rootCheck.canonicalPath, targetFile);
+    if (PathGuard.isSensitivePath(relToRoot)) {
+      return {
+        success: false,
+        backupPath: "",
+        error: `Security violation: Modifying sensitive or protected file "${relToRoot}" is strictly prohibited.`,
+      };
+    }
+
+    // Verify realpath of existing ancestor/target to block symlink escapes outside root
+    try {
+      const realRoot = fs.realpathSync(rootCheck.canonicalPath);
+      const rootCmp = process.platform === "win32" ? realRoot.toLowerCase() : realRoot;
+
+      let probe = targetFile;
+      while (!fs.existsSync(probe)) {
+        const parent = path.dirname(probe);
+        if (parent === probe) break;
+        probe = parent;
+      }
+
+      if (fs.existsSync(probe)) {
+        const lstat = fs.lstatSync(probe);
+        if (lstat.isSymbolicLink()) {
+          return {
+            success: false,
+            backupPath: "",
+            error: `Security violation: Refusing to write through symbolic link "${filePath}".`,
+          };
+        }
+        const realProbe = fs.realpathSync(probe);
+        const probeCmp = process.platform === "win32" ? realProbe.toLowerCase() : realProbe;
+        const relReal = path.relative(rootCmp, probeCmp);
+        if (relReal.startsWith("..") || path.isAbsolute(relReal)) {
+          return {
+            success: false,
+            backupPath: "",
+            error: `Security violation: Target path "${filePath}" escapes workspace root via symlink.`,
+          };
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, backupPath: "", error: `Symlink check failed: ${msg}` };
+    }
 
     // Ensure parent directory exists
     const dir = path.dirname(targetFile);
@@ -44,8 +95,10 @@ export class PatchEngine {
       fs.copyFileSync(targetFile, backupPath);
     }
 
-    // Write new content
-    fs.writeFileSync(targetFile, newContent, "utf-8");
+    // Write new content atomically via temp file
+    const tempFile = `${targetFile}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempFile, newContent, "utf-8");
+    fs.renameSync(tempFile, targetFile);
 
     return {
       success: true,

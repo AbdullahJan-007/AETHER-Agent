@@ -1,5 +1,4 @@
 import { z } from "zod";
-import path from "path";
 import { FsAdapter } from "../../workspace/fs-adapter";
 import { PathGuard } from "../../security/path-guard";
 import { SecretVault } from "../../security/secret-vault";
@@ -14,7 +13,7 @@ const schema = z.object({
 export const readFileTool: AgentToolDef<z.infer<typeof schema>> = {
   name: "read_file",
   description:
-    "Safely read the text contents of a project file. Automatically checks permissions, strips secrets, and guards against path traversal. Access to .env files is refused.",
+    "Safely read the text contents of a project file. Automatically checks permissions, strips secrets, and guards against path traversal. Access to .env, private keys, and .git files is refused.",
   schema,
   describe(args) {
     return `Read ${args.path}`;
@@ -24,9 +23,8 @@ export const readFileTool: AgentToolDef<z.infer<typeof schema>> = {
       return "Error: File path is required.";
     }
 
-    const baseName = path.basename(args.path);
-    if (/^\.env($|\..*)/i.test(baseName)) {
-      return "Error: Access to .env credential files is strictly prohibited for security.";
+    if (PathGuard.isSensitivePath(args.path)) {
+      return "Error: Access to .env, private key, or .git credential files is strictly prohibited for security.";
     }
 
     const validation = PathGuard.validatePath(args.path, ctx.root);

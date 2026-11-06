@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TerminalRunner } from "@/lib/terminal";
 import { SecretVault } from "@/lib/security";
-import { validateLocalRequest } from "@/src/lib/security/proxy";
+import { validateLocalRequest } from "@/lib/security/proxy";
 
 export const runtime = "nodejs";
 
@@ -19,7 +19,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const workingDir = cwd || process.cwd();
+    const workingDir =
+      typeof cwd === "string" && cwd.trim() !== "" && cwd.trim() !== "/"
+        ? cwd.trim()
+        : process.cwd();
     const result = await TerminalRunner.execute(binary, args, workingDir);
 
     return NextResponse.json({

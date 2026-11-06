@@ -1,6 +1,7 @@
 import { z } from "zod";
 import path from "path";
 import { FsAdapter } from "../../workspace/fs-adapter";
+import { PathGuard } from "../../security/path-guard";
 import { SecretVault } from "../../security/secret-vault";
 import { getAgentConfig } from "../config";
 import type { AgentToolDef, ToolContext } from "./types";
@@ -46,8 +47,7 @@ export const searchCodeTool: AgentToolDef<z.infer<typeof schema>> = {
 
         if (item.type !== "file") continue;
 
-        const baseName = path.basename(item.path);
-        if (/^\.env($|\..*)/i.test(baseName)) continue;
+        if (PathGuard.isSensitivePath(item.path)) continue;
 
         const ext = path.extname(item.path).toLowerCase();
         if (BINARY_EXTENSIONS.has(ext)) continue;

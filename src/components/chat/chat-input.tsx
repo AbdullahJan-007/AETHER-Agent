@@ -12,7 +12,7 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
-import type { AgentMode } from "@/src/lib/agent/system-prompt";
+import type { AgentMode } from "@/lib/agent/system-prompt";
 
 export interface AttachedFile {
   name: string;

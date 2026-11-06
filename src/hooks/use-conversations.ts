@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import type {
   ConversationRecord,
   ConversationSummary,
-} from "@/src/lib/types/conversation";
+} from "@/lib/types/conversation";
 import { toast } from "sonner";
 
 export function useConversations() {

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { validateLocalRequest } from "@/src/lib/security/proxy";
-import { PathGuard } from "@/src/lib/security/path-guard";
-import { runAgent } from "@/src/lib/agent/run-agent";
-import type { AgentRunOptions } from "@/src/lib/agent/events";
+import { validateLocalRequest } from "@/lib/security/proxy";
+import { PathGuard } from "@/lib/security/path-guard";
+import { runAgent } from "@/lib/agent/run-agent";
+import type { AgentRunOptions } from "@/lib/agent/events";
 
 export const runtime = "nodejs";
 
@@ -20,15 +20,12 @@ export async function POST(request: Request) {
   }
 
   const { root, mode = "build", messages = [], attachedFiles = [] } = body;
+  const targetRoot =
+    typeof root === "string" && root.trim() !== "" && root.trim() !== "/"
+      ? root.trim()
+      : process.cwd();
 
-  if (!root || typeof root !== "string") {
-    return NextResponse.json(
-      { error: "A valid workspace project root path is required." },
-      { status: 400 }
-    );
-  }
-
-  const rootCheck = PathGuard.validateRoot(root);
+  const rootCheck = PathGuard.validateRoot(targetRoot);
   if (!rootCheck.safe) {
     return NextResponse.json(
       { error: rootCheck.error || "Invalid workspace root directory." },

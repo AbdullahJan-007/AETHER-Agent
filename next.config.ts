@@ -43,7 +43,7 @@ const nextConfig: NextConfig = {
       },
       // Slightly looser for the streaming chat endpoint if needed (SSE works fine with above)
       {
-        source: '/api/chat',
+        source: '/api/agent',
         headers: securityHeaders,
       },
     ];

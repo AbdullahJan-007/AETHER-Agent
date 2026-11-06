@@ -46,6 +46,16 @@ describe("Security Subsystem - PathGuard", () => {
     expect(driveRootResult.safe).toBe(false);
     expect(driveRootResult.error).toMatch(/protected operating system directory/i);
   });
+
+  it("identifies sensitive .env, private key, and .git paths", () => {
+    expect(PathGuard.isSensitivePath(".env")).toBe(true);
+    expect(PathGuard.isSensitivePath(".env.local")).toBe(true);
+    expect(PathGuard.isSensitivePath(".git/hooks/pre-commit")).toBe(true);
+    expect(PathGuard.isSensitivePath(".git/config")).toBe(true);
+    expect(PathGuard.isSensitivePath("certs/server.pem")).toBe(true);
+    expect(PathGuard.isSensitivePath("id_rsa")).toBe(true);
+    expect(PathGuard.isSensitivePath("src/app.tsx")).toBe(false);
+  });
 });
 
 describe("Security Subsystem - Sanitizer", () => {

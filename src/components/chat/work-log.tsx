@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import type { ToolCallRecord } from "@/src/lib/types/conversation";
+import type { ToolCallRecord } from "@/lib/types/conversation";
 
 interface WorkLogProps {
   toolCalls?: ToolCallRecord[];

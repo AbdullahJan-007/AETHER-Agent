@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { validateLocalRequest } from "@/src/lib/security/proxy";
-import { ConversationStore } from "@/src/lib/history/conversation-store";
-import type { ConversationRecord } from "@/src/lib/types/conversation";
+import { validateLocalRequest } from "@/lib/security/proxy";
+import { ConversationStore } from "@/lib/history/conversation-store";
+import type { ConversationRecord } from "@/lib/types/conversation";
 
 export const runtime = "nodejs";
 

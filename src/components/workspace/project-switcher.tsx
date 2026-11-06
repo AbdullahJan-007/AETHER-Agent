@@ -6,23 +6,26 @@ import { useWorkstationStore } from "@/store/workstation-store";
 import { toast } from "sonner";
 
 export function ProjectSwitcher() {
-  const { projectRoot, fileTree, isLoadingTree, setProjectRoot, setFileTree, setLoadingTree } =
+  const { projectRoot, isLoadingTree, setProjectRoot, setFileTree, setLoadingTree } =
     useWorkstationStore();
   const [inputPath, setInputPath] = useState(projectRoot);
   const [isValid, setIsValid] = useState<boolean | null>(null);
 
-  // Load tree on mount or path change
-  const loadWorkspace = async (targetPath: string) => {
-    if (!targetPath) return;
+  const loadWorkspace = async (targetPath: string, silent = false) => {
+    const queryPath = targetPath && targetPath.trim() !== "" ? targetPath.trim() : ".";
     setLoadingTree(true);
     try {
-      const res = await fetch(`/api/workspace?action=tree&root=${encodeURIComponent(targetPath)}`);
+      const res = await fetch(`/api/workspace?action=tree&root=${encodeURIComponent(queryPath)}`);
       const data = await res.json();
       if (data.success) {
+        const resolvedRoot = data.canonicalRoot || queryPath;
         setFileTree(data.tree);
-        setProjectRoot(targetPath);
+        setProjectRoot(resolvedRoot);
+        setInputPath(resolvedRoot);
         setIsValid(true);
-        toast.success(`Connected to workspace (${data.tree.length} files detected)`);
+        if (!silent) {
+          toast.success(`Connected to workspace (${data.tree.length} files detected)`);
+        }
       } else {
         setIsValid(false);
         toast.error(data.error || "Failed to load project directory");
@@ -37,7 +40,7 @@ export function ProjectSwitcher() {
 
   useEffect(() => {
     if (!projectRoot) {
-      loadWorkspace(".");
+      loadWorkspace(".", true);
     } else {
       setInputPath(projectRoot);
     }
@@ -51,7 +54,7 @@ export function ProjectSwitcher() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-2.5 bg-white/60 border-b border-stone-200/70 flex items-center justify-between gap-2.5 select-none text-xs"
+      className="p-2.5 bg-white/60 border-b border-stone-200/70 flex items-center justify-between gap-2.5 select-none text-xs shrink-0"
     >
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <Folder className="w-4 h-4 text-orange-500 shrink-0" strokeWidth={1.9} />

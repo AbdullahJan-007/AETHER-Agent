@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FsAdapter, PatchEngine } from "@/lib/workspace";
 import { SecretVault, PathGuard } from "@/lib/security";
-import { validateLocalRequest } from "@/src/lib/security/proxy";
+import { validateLocalRequest } from "@/lib/security/proxy";
 
 export const runtime = "nodejs";
 
@@ -11,7 +11,11 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const root = searchParams.get("root") || process.cwd();
+    const rawRoot = searchParams.get("root");
+    const root =
+      rawRoot && rawRoot.trim() !== "" && rawRoot.trim() !== "/"
+        ? rawRoot.trim()
+        : process.cwd();
 
     const rootCheck = PathGuard.validateRoot(root);
     if (!rootCheck.safe) {
@@ -20,13 +24,23 @@ export async function GET(req: NextRequest) {
 
     if (action === "tree") {
       const tree = await FsAdapter.listTree(rootCheck.canonicalPath);
-      return NextResponse.json({ success: true, tree });
+      return NextResponse.json({
+        success: true,
+        tree,
+        canonicalRoot: rootCheck.canonicalPath,
+      });
     }
 
     if (action === "read") {
       const file = searchParams.get("file");
       if (!file) {
         return NextResponse.json({ success: false, error: "File parameter required." }, { status: 400 });
+      }
+      if (PathGuard.isSensitivePath(file)) {
+        return NextResponse.json(
+          { success: false, error: "Access to sensitive credential or .git files is prohibited." },
+          { status: 403 }
+        );
       }
       const content = await FsAdapter.readFile(file, rootCheck.canonicalPath);
       return NextResponse.json({ success: true, content: SecretVault.redactSecrets(content) });
@@ -45,7 +59,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action, file, content, root } = body;
-    const projectRoot = root || process.cwd();
+    const projectRoot =
+      typeof root === "string" && root.trim() !== "" && root.trim() !== "/"
+        ? root.trim()
+        : process.cwd();
 
     const rootCheck = PathGuard.validateRoot(projectRoot);
     if (!rootCheck.safe) {
@@ -56,6 +73,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: "File and content are required." },
         { status: 400 }
+      );
+    }
+
+    if (PathGuard.isSensitivePath(file)) {
+      return NextResponse.json(
+        { success: false, error: "Modifying sensitive credential or .git files is prohibited." },
+        { status: 403 }
       );
     }
 

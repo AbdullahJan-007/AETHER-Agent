@@ -12,8 +12,8 @@ import {
   X,
   ChevronRight,
 } from "lucide-react";
-import { AetherLogo } from "@/src/components/ui/aether-logo";
-import type { ConversationSummary } from "@/src/lib/types/conversation";
+import { AetherLogo } from "@/components/ui/aether-logo";
+import type { ConversationSummary } from "@/lib/types/conversation";
 
 interface SidebarProps {
   conversations: ConversationSummary[];
