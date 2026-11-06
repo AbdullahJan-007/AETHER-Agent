@@ -79,7 +79,7 @@ export function WorkstationHeader({
 
         <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200/70 text-orange-700 text-[11px] font-medium shrink-0">
           <Cpu className="w-3 h-3 text-orange-500" strokeWidth={1.9} />
-          <span>gemini-3.8-flash</span>
+          <span>gemini-3.5-flash-lite • Auto-Failover</span>
         </div>
       </div>
 

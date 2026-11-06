@@ -2,10 +2,8 @@
  * Central, environment-driven limits for the AETHER agent.
  *
  * AETHER runs on the user's own machine or hybrid Vercel cloud, so these defaults
- * are deliberately generous. Every value can be overridden in `.env.local`.
- *
- * Read lazily (call `getAgentConfig()` per request) so tests and env edits
- * take effect without a module reload.
+ * are tuned for low latency (fast Time-To-First-Token) and high reliability.
+ * Every value can be overridden in `.env.local`.
  */
 export interface AgentConfig {
   /** Gemini model id used by the agent. */
@@ -28,7 +26,7 @@ export interface AgentConfig {
   maxProposals: number;
 }
 
-const DEPRECATED_MODELS = new Set([
+const DEPRECATED_OR_OVERLOADED_MODELS = new Set([
   "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
@@ -38,8 +36,8 @@ const DEPRECATED_MODELS = new Set([
 
 export function resolveActiveModel(rawModel?: string): string {
   const candidate = (rawModel || "").trim().replace(/^models\//, "");
-  if (!candidate || DEPRECATED_MODELS.has(candidate)) {
-    return "gemini-3.8-flash";
+  if (!candidate || DEPRECATED_OR_OVERLOADED_MODELS.has(candidate)) {
+    return "gemini-3.5-flash-lite";
   }
   return candidate;
 }
@@ -54,9 +52,9 @@ function readInt(name: string, fallback: number, min = 0): number {
 export function getAgentConfig(): AgentConfig {
   return {
     model: resolveActiveModel(process.env.AETHER_MODEL),
-    maxSteps: readInt("AETHER_MAX_STEPS", 40, 1),
-    maxOutputTokens: readInt("AETHER_MAX_OUTPUT_TOKENS", 65_536, 256),
-    rpm: readInt("AETHER_RPM", 10, 0),
+    maxSteps: readInt("AETHER_MAX_STEPS", 30, 1),
+    maxOutputTokens: readInt("AETHER_MAX_OUTPUT_TOKENS", 16_384, 256),
+    rpm: readInt("AETHER_RPM", 0, 0),
     readFileMaxBytes: readInt("AETHER_READ_FILE_MAX_BYTES", 2_000_000, 1_000),
     historyCharBudget: readInt("AETHER_HISTORY_CHAR_BUDGET", 3_000_000, 10_000),
     checkTimeoutMs: readInt("AETHER_CHECK_TIMEOUT_MS", 600_000, 5_000),

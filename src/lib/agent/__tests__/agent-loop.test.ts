@@ -6,11 +6,11 @@ import { resolveActiveModel } from "../config";
 import {
   buildModelFailoverList,
   extractSuggestedModel,
-  isModelNotFoundError,
+  isRetryableModelError,
 } from "../model";
 import type { AgentEvent } from "../events";
 
-describe("Agent Loop - runAgent & Self-Healing Model Failover", () => {
+describe("Agent Loop - runAgent & Self-Healing 503/404 Model Failover", () => {
   const testRoot = path.resolve("./");
 
   it("executes tool calls, generates UUIDs for calls lacking them, yields events and finishes", async () => {
@@ -95,23 +95,24 @@ describe("Agent Loop - runAgent & Self-Healing Model Failover", () => {
     expect(events[0]).toEqual({ type: "done", reason: "aborted" });
   });
 
-  it("automatically remaps deprecated gemini-2.5-flash to gemini-3.8-flash and extracts Google's error recommendation", () => {
-    expect(resolveActiveModel(undefined)).toBe("gemini-3.8-flash");
-    expect(resolveActiveModel("gemini-2.5-flash")).toBe("gemini-3.8-flash");
-    expect(resolveActiveModel("models/gemini-2.0-flash")).toBe("gemini-3.8-flash");
+  it("defaults to ultra-fast gemini-3.5-flash-lite and catches both 404 and 503 High Demand errors", () => {
+    expect(resolveActiveModel(undefined)).toBe("gemini-3.5-flash-lite");
+    expect(resolveActiveModel("gemini-2.5-flash")).toBe("gemini-3.5-flash-lite");
+    expect(resolveActiveModel("models/gemini-2.0-flash")).toBe("gemini-3.5-flash-lite");
 
     const google404Error = new Error(
       "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse: [404 ] This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.8-flash for the latest features and improvements."
     );
+    const google503Error = new Error(
+      "[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse: [503 ] This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later."
+    );
 
-    expect(isModelNotFoundError(google404Error)).toBe(true);
+    expect(isRetryableModelError(google404Error)).toBe(true);
+    expect(isRetryableModelError(google503Error)).toBe(true);
     expect(extractSuggestedModel(google404Error)).toBe("gemini-3.8-flash");
 
-    const failover = buildModelFailoverList("gemini-2.5-flash", google404Error, [
-      "gemini-3.5-flash-lite",
-    ]);
-    expect(failover[0]).toBe("gemini-3.8-flash");
-    expect(failover).toContain("gemini-3.5-flash-lite");
-    expect(failover).not.toContain("gemini-2.5-flash");
+    const failover = buildModelFailoverList("gemini-3.8-flash", google503Error);
+    expect(failover[0]).toBe("gemini-3.5-flash-lite");
+    expect(failover).toContain("gemini-3.1-flash-lite");
   });
 });
