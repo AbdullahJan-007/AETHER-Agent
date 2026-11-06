@@ -1,7 +1,6 @@
 export class SecretVault {
   private static readonly SECRET_PATTERNS: RegExp[] = [
-    /AIza[0-9A-Za-z\-_]{35}/g, // Google API Key
-    /AIzaSy[0-9A-Za-z\-_]{33}/g, // Gemini specific pattern
+    /AIza[0-9A-Za-z\-_]{28,40}/g, // Google API / Gemini Key (real keys are ~39 chars, test keys vary 32-39)
     /sk-[0-9A-Za-z]{48}/g, // OpenAI format
     /gsk_[0-9A-Za-z]{48,}/g, // Groq
     /AKIA[0-9A-Z]{16}/g, // AWS Access Key

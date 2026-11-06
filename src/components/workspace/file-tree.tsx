@@ -5,7 +5,7 @@ import { FileCode, FileJson, FileText, Folder, ChevronRight, ChevronDown, Search
 import { useWorkstationStore } from "@/store/workstation-store";
 import { toast } from "sonner";
 
-export const FileTree: React.FC = () => {
+export function FileTree() {
   const { fileTree, projectRoot, selectedFile, setSelectedFile } = useWorkstationStore();
   const [filter, setFilter] = useState("");
 
@@ -33,56 +33,60 @@ export const FileTree: React.FC = () => {
 
   const getFileIcon = (filePath: string) => {
     if (filePath.endsWith(".ts") || filePath.endsWith(".tsx")) {
-      return <FileCode className="w-3.5 h-3.5 text-indigo-400 shrink-0" />;
+      return <FileCode className="w-3.5 h-3.5 text-blue-500 shrink-0" strokeWidth={1.9} />;
     }
     if (filePath.endsWith(".json")) {
-      return <FileJson className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+      return <FileJson className="w-3.5 h-3.5 text-amber-500 shrink-0" strokeWidth={1.9} />;
     }
-    return <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />;
+    return <FileText className="w-3.5 h-3.5 text-stone-400 shrink-0" strokeWidth={1.9} />;
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#12151e] border-r border-[#242b3d] select-none text-xs">
-      <div className="p-2 border-b border-[#242b3d]">
+    <div className="flex flex-col h-full bg-white/70 select-none text-xs">
+      <div className="p-2.5 border-b border-stone-200/70">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" />
+          <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-2.5" strokeWidth={1.9} />
           <input
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Search workspace files..."
-            className="w-full bg-[#1a1f2c] text-slate-200 pl-8 pr-2.5 py-1.5 rounded-md border border-[#242b3d] text-xs focus:outline-none focus:border-indigo-500"
+            placeholder="Search files..."
+            className="w-full bg-stone-50 text-stone-800 pl-8 pr-2.5 py-1.5 rounded-xl border border-stone-200 text-xs focus:outline-hidden focus:ring-1 focus:ring-orange-500 placeholder:text-stone-400"
           />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
         {filteredTree.length === 0 ? (
-          <div className="p-4 text-center text-slate-500 text-xs">No files matching filter</div>
+          <div className="p-6 text-center text-stone-400 text-xs">
+            {fileTree.length === 0 ? "No files detected. Connect a workspace." : "No matching files."}
+          </div>
         ) : (
           filteredTree.map((item) => {
             const isSelected = selectedFile === item.path;
+            const isDir = item.type === "directory";
+
             return (
-              <button
+              <div
                 key={item.path}
-                onClick={() => item.type === "file" && handleSelectFile(item.path)}
-                className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors ${
+                onClick={() => !isDir && handleSelectFile(item.path)}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-colors font-mono text-[11px] cursor-pointer ${
                   isSelected
-                    ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-[#1a1f2c]"
-                }`}
+                    ? "bg-orange-50 text-orange-950 font-semibold border border-orange-200/80"
+                    : "text-stone-700 hover:bg-stone-100/80"
+                } ${isDir ? "font-semibold text-stone-900" : ""}`}
               >
-                {item.type === "directory" ? (
-                  <Folder className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                {isDir ? (
+                  <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" strokeWidth={1.9} />
                 ) : (
                   getFileIcon(item.path)
                 )}
-                <span className="truncate font-mono">{item.path}</span>
-              </button>
+                <span className="truncate">{item.path}</span>
+              </div>
             );
           })
         )}
       </div>
     </div>
   );
-};
+}

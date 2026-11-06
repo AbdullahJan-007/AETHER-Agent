@@ -1,6 +1,7 @@
 export class CommandWhitelist {
-  // Disallow shell operators, command substitutions, Windows variable expansions, and caret escaping
-  private static readonly DANGEROUS_CHARS = /[;&|<>`$\r\n%^\0]/;
+  // Disallow shell operators, command substitutions, Windows variable expansions, caret escaping and quotes.
+  // Quotes and "!" are blocked because Windows runs npm/npx through cmd.exe (see TerminalRunner).
+  private static readonly DANGEROUS_CHARS = /[;&|<>`$\r\n%^\0"!]/;
 
   private static readonly ALLOWED_RULES: Record<string, Set<string>> = {
     npm: new Set(["test", "run", "lint", "build", "typecheck"]),

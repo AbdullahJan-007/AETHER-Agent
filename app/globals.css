@@ -1,82 +1,74 @@
 @import "tailwindcss";
 
 :root {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter, system-ui, -apple-system, sans-serif);
+  --font-mono: var(--font-jetbrains-mono, monospace);
 
-  /* AETHER Obsidian Design System (Figma & Mobbin Enterprise Dark Tokens) */
-  --bg-root: #090a0f;
-  --surface-1: #12151e;
-  --surface-2: #1a1f2c;
-  --surface-3: #222838;
-  --border-subtle: #242b3d;
-  --border-focus: #3b455e;
+  /* AETHER Sunrise Design System (Warm Light Ergonomic Theme) */
+  --bg-gradient-start: #fff7ed;
+  --bg-gradient-mid: #fef2f2;
+  --bg-gradient-end: #f5f3ff;
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --bg-root: #faf7f2;
+  --surface-card: #ffffff;
+  --surface-subtle: #fbf9f6;
+  --surface-hover: #f5f1eb;
+  --surface-active: #ece5dc;
   
-  --accent-primary: #6366f1;
-  --accent-hover: #4f46e5;
-  --accent-glow: rgba(99, 102, 241, 0.15);
+  --border-subtle: #efe3d6;
+  --border-strong: #dcd0c2;
+  --border-focus: #f97316;
   
-  --diff-add-bg: rgba(16, 185, 129, 0.15);
-  --diff-add-border: #10b981;
-  --diff-del-bg: rgba(239, 68, 68, 0.15);
-  --diff-del-border: #ef4444;
+  --text-primary: #1c1917;
+  --text-secondary: #78716c;
+  --text-muted: #a8a29e;
   
-  --warning-thinking: #f59e0b;
+  --brand-orange: #f97316;
+  --brand-rose: #e11d48;
+  --brand-violet: #7c3aed;
+  
+  --diff-add-bg: #ecfdf5;
+  --diff-add-text: #065f46;
+  --diff-add-border: #a7f3d0;
+  
+  --diff-del-bg: #fef2f2;
+  --diff-del-text: #991b1b;
+  --diff-del-border: #fecaca;
+  
+  --warning-bg: #fffbeb;
+  --warning-text: #92400e;
+  --warning-border: #fde68a;
 }
 
 @theme inline {
   --color-background: var(--bg-root);
   --color-foreground: var(--text-primary);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 /* Base Body Styles */
 html, body {
-  background-color: var(--bg-root);
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
-  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
   overflow-x: hidden;
   height: 100%;
 }
 
-/* Scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-root);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
-  border-radius: 3px;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-focus);
-}
-
-/* Surface Utility Classes */
-.surface-card {
-  background-color: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-}
-
-.surface-elevated {
-  background-color: var(--surface-2);
-  border: 1px solid var(--border-subtle);
-}
-
-.surface-interactive {
-  background-color: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  transition: all 0.15s ease-in-out;
-}
-.surface-interactive:hover {
-  border-color: var(--border-focus);
-  background-color: var(--surface-2);
+  background: var(--border-strong);
 }

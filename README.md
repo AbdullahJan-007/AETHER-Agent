@@ -1,23 +1,38 @@
-# AETHER — On-Premise Full-Stack AI Engineer Workstation
+# AETHER — On-Premise AI Principal Engineer & UI/UX Workstation
 
-[![Security Audit](https://img.shields.io/badge/Security-4--Phase%20Hardened-emerald)](#security--hardening)
-[![AI Engine](https://img.shields.io/badge/Gemini-2.5%20Flash%20(Free%20Tier)-indigo)](https://aistudio.google.com/apikey)
-[![Architecture](https://img.shields.io/badge/Clean%20Architecture-Modular-blue)](./docs/ARCHITECTURE.md)
-[![Testing](https://img.shields.io/badge/Testing-Vitest%20%2B%20TDD-green)](./docs/PRD.md)
+[![Security Audit](https://img.shields.io/badge/Security-5--Phase%20Hardened-emerald)](./docs/SECURITY.md)
+[![AI Engine](https://img.shields.io/badge/LangChain-Gemini%202.5%20Flash%20Agent-orange)](https://aistudio.google.com/apikey)
+[![Design System](https://img.shields.io/badge/UI%2FUX-Sunrise%20Ergonomic%20Light-rose)](./docs/ARCHITECTURE.md)
+[![Testing](https://img.shields.io/badge/Testing-Vitest%20%2B%20TDD%20(61%20Passed)-green)](./docs/PRD.md)
 
-**AETHER** is an enterprise-grade, local-first AI coding workstation designed exclusively for **Full-Stack Web Engineering** (Next.js, React 19, TypeScript, Node.js, Tailwind CSS v4, SQL/Prisma). Operating directly on your machine, it connects to your local client and production repositories, streams cognitive reasoning and full production code, provides visual staged diff reviews with automatic rollback backups, and runs project tests safely.
+**AETHER** is an enterprise-grade, local-first AI Principal Engineer & UI/UX Architect workstation. Running 100% on your own machine (`127.0.0.1`), it connects directly to your local repositories, autonomously explores your codebase using **LangChain tools**, writes complete production-grade code across **any technology stack** (TypeScript, React, Next.js, Vue, Svelte, Node.js, Python, FastAPI, Go, Rust, SQL/Prisma, Docker, and beyond), designs world-class user interfaces with curated color palettes and visual preview cards, stages proposed changes with explanations for line-by-line diff review, and executes validation tests safely.
 
 ---
 
-## ⚡ What Makes AETHER Completely Redesigned
+## ⚡ Key Highlights & Architecture
 
-1. **Direct On-Premise Workspace Engine**: Connects to actual local repositories on your disk. Reads file trees, generates fixes, and writes changes directly with automatic `.backup` rollback protection.
-2. **Dedicated Full-Stack Mastery**: Laser-focused on modern web architecture (Next.js 15/16 App Router, React 19, Server Actions, TypeScript strict, Prisma, and PostgreSQL). No shallow multi-language distractions.
-3. **Google Gemini Free-Tier Optimization**: Powered by the official `@google/genai` SDK with an automatic 15 RPM throttling queue to prevent quota exhaustion.
-4. **Interactive Staged Diff Reviewer**: Code is never blindly written over your work. Inspect green additions and red deletions line-by-line, and apply changes when you are satisfied.
-5. **Safe Terminal Runner with Auto-Fix**: Run `npm test`, `npm run lint`, and `git status` directly from the UI. If a test fails, click **"Auto-Fix with AETHER"** to trigger automated root-cause analysis and repair.
-6. **Figma & Mobbin Obsidian Dark System**: High-contrast, ergonomic engineering interface inspired by leading developer tooling designs.
-7. **Clean Modular Architecture**: Deconstructed from a legacy 1,894-line monolithic file into clean, atomic modules strictly capped under 250 lines.
+1. **Autonomous LangChain Tool-Using Agent**:
+   - Powered by `@langchain/google-genai` and `@langchain/core` (`gemini-2.5-flash`).
+   - Instead of single-shot guessing, AETHER inspects your project directory, reads source files, searches symbols, stages multi-file diffs, and verifies work with test suites.
+2. **World-Class Principal Engineering & UI/UX Mastery**:
+   - **Zero Placeholder / Demo Coding**: Strictly engineered to produce complete, humanized, reliable, and scalable production code—never lazy `// TODO` or `// rest of code` snippets.
+   - **Multi-Stack Mastery**: Seamlessly adapts to whatever frontend, backend, database, or infrastructure stack your project uses.
+   - **Elite UI/UX Design & Live Card Previews**: Generates harmonious WCAG AA/AAA color palettes, 4px/8px grid layouts, and structured visual preview cards for every interface section.
+3. **5 Sandboxed Local Agent Tools**:
+   - `list_files`: Explores workspace directories while automatically skipping `node_modules`, `.git`, `.next`, and `dist`.
+   - `read_file`: Reads project files with automatic secret redaction (`SecretVault`) and anti-jailbreak delimiters (`Sanitizer`). Strictly refuses `.env*` files.
+   - `search_code`: Fast case-insensitive text and symbol search across codebase files.
+   - `stage_patch`: Proposes file creations or modifications with a clear 1–2 sentence reason. **Never writes directly to disk.**
+   - `run_check`: Runs whitelisted read-only checks (`test`, `lint`, `typecheck`, `git_status`, `git_diff`) with output scrubbing.
+4. **Confirm-Before-Save Diff Review Flow**:
+   - Proposed changes open in an interactive **Review & Save** dialog showing `NEW` / `EDITED` badges, `+ / -` line counts, the agent's plain-language reason, and expandable unified diffs.
+   - Nothing is written to disk until you explicitly click **Save**, which automatically creates a `.backup` snapshot before modifying any existing file.
+5. **On-Disk Persistent Conversation History**:
+   - Conversations are stored atomically as JSON files under `data/conversations/` (gitignored).
+   - Grouped by *Today*, *Yesterday*, and *Older* with instant search, inline rename, delete confirmation, and `Ctrl + N` new chat shortcut.
+6. **Sunrise Ergonomic Light Theme & Collapsible Sidebars**:
+   - Warm, high-contrast light palette (`#fff7ed → #fef2f2 → #f5f3ff`) featuring the geometric **Prism** logo (`<AetherLogo />`) and Inter / JetBrains Mono typography.
+   - **Claude-Style Collapsible Panels**: Toggle the Left Chat History Sidebar (`Ctrl + B`) or the Right Workspace Files/Diffs Panel anytime for distraction-free focus.
 
 ---
 
@@ -27,106 +42,104 @@
 - **Node.js**: v20 or higher
 - **Google Gemini API Key**: Free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
 
-### 2. Installation
+### 2. Installation & Startup
 ```bash
-# Clone or navigate to the repository
+# 1. Navigate to the repository
 cd AETHER-Agent-main
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Configure your free Gemini API Key
-echo GOOGLE_API_KEY=your_gemini_api_key_here > .env.local
+# 3. Configure your Gemini API Key
+cp .env.example .env.local
+# Edit .env.local and set GOOGLE_API_KEY=your_gemini_api_key_here
 
-# Run the local workstation
+# 4. Start the local workstation (binds strictly to 127.0.0.1:3000)
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000) (or [http://localhost:3000](http://localhost:3000)) in your browser.
 
 ---
 
-## 💻 Workflow: Building Real Projects on Your Machine
+## ⚙️ Environment Configuration (`.env.local`)
 
-1. **Connect Local Workspace**: In the top workspace bar, enter the path to your client repository (e.g. `C:/projects/my-client-app`) and click **Connect**.
-2. **Select Engineering Mode**:
-   - 🔨 **Build**: Generate complete, runnable full-stack features.
-   - 🧭 **Architect**: Plan data schemas, API contracts, and system layouts.
-   - 🐛 **Debug**: Fix failing tests or pasted stack traces.
-   - 🛡️ **Review**: Audit code for security vulnerabilities and performance.
-3. **Review & Apply Code**:
-   - Generated files appear in the **Staged Diffs** tab.
-   - Review additions and deletions.
-   - Click **Apply to Disk** — an automatic `.backup` copy of the original file is created before writing.
-4. **Verify in Terminal Runner**:
-   - Click **npm test** or **lint** in the bottom terminal drawer to run your test suite.
-   - If tests fail, click **Auto-Fix with AETHER** to generate a patch.
+All agent caps are configurable via environment variables with generous local-first defaults:
 
----
-
-## 🛡️ Security & Hardening
-
-AETHER enforces a zero-trust security sandbox across four phases:
-- **Phase 1: Path Traversal Defense**: Canonical path validation prevents directory escapes outside the project root (`PathGuard`).
-- **Phase 2: Terminal RCE Protection**: Strict argument whitelisting blocks shell metacharacters (`;`, `&&`, `|`, `` ` ``).
-- **Phase 3: Prompt Jailbreak Isolation**: User files and logs are wrapped in anti-injection delimiters (`Sanitizer`).
-- **Phase 4: Secret Leak Redaction**: Outgoing streaming events and logs are scrubbed for API tokens (`SecretVault`).
-
-For the full security audit and threat model, see [docs/SECURITY.md](./docs/SECURITY.md).
+| Variable | Default | Description |
+|---|---|---|
+| `GOOGLE_API_KEY` | *(Required)* | Your Google Gemini API key (server-only, never exposed to client) |
+| `AETHER_MODEL` | `gemini-2.5-flash` | Gemini model ID |
+| `AETHER_MAX_STEPS` | `40` | Maximum tool-calling turns per request |
+| `AETHER_MAX_OUTPUT_TOKENS` | `65536` | Maximum output tokens per model turn |
+| `AETHER_RPM` | `10` | Sliding-window requests per minute (`0` disables throttling for paid keys) |
+| `AETHER_READ_FILE_MAX_BYTES` | `2000000` | Max bytes returned by `read_file` (2 MB) |
+| `AETHER_HISTORY_CHAR_BUDGET` | `3000000` | Character budget for conversation history sent to model |
+| `AETHER_CHECK_TIMEOUT_MS` | `600000` | Timeout for `run_check` commands (10 minutes) |
 
 ---
 
-## 📂 Project Architecture
+## 🛡️ 5-Phase Zero-Trust Security Architecture
 
-```
+AETHER enforces strict local security boundaries verified by 61 automated unit & penetration tests:
+- **Phase 1 — Path Traversal Defense (`PathGuard`)**: Canonical path resolution prevents directory escapes (`../`), blocks OS system roots (`C:\Windows`, `/etc`), and rejects Windows reserved device names and NTFS Alternate Data Streams.
+- **Phase 2 — Terminal RCE Protection (`CommandWhitelist` & `TerminalRunner`)**: Strict binary and subcommand whitelisting blocks shell metacharacters (`;`, `&&`, `|`, `` ` ``, `$`, `"`, `!`) and scrubs API keys from child process environments.
+- **Phase 3 — Prompt Jailbreak Isolation (`Sanitizer`)**: Wraps untrusted repository files and logs in cryptographic delimiter guards so embedded instructions are treated strictly as data.
+- **Phase 4 — Secret Redaction (`SecretVault`)**: Scrubs Google API keys (`AIza...`), OpenAI/Groq keys, AWS keys, GitHub PATs, JWTs, and database connection URIs before data reaches the model or UI.
+- **Phase 5 — Local Origin & DNS Rebinding Firewall (`proxy.ts`)**: Rejects non-local `Host` headers and cross-origin `Origin` / `Sec-Fetch-Site: cross-site` requests with HTTP `403 Forbidden`.
+
+See [docs/SECURITY.md](./docs/SECURITY.md) for the complete threat model and audit report.
+
+---
+
+## 📂 Project Structure
+
+```text
 ├── app/
 │   ├── api/
-│   │   ├── chat/route.ts         # SSE streaming with @google/genai
-│   │   ├── workspace/route.ts    # Sandboxed file tree, reader & patcher
-│   │   └── terminal/route.ts     # Whitelisted safe terminal runner
-│   ├── globals.css               # Obsidian Figma/Mobbin design tokens
-│   ├── layout.tsx                # Next.js root layout & fonts
-│   └── page.tsx                  # Clean root orchestrator (<185 lines)
+│   │   ├── agent/route.ts                # SSE streaming LangChain tool-using agent endpoint
+│   │   ├── conversations/route.ts        # List & save on-disk conversation records
+│   │   ├── conversations/[id]/route.ts   # Get, rename, update & delete conversation by UUID
+│   │   ├── workspace/route.ts            # Sandboxed file tree, reader & .backup patch applier
+│   │   └── terminal/route.ts             # Whitelisted safe terminal command runner
+│   ├── globals.css                       # Sunrise light design tokens & custom scrollbars
+│   ├── icon.svg                          # Prism geometric vector app icon
+│   ├── layout.tsx                        # Root layout with Inter & JetBrains Mono fonts
+│   └── page.tsx                          # Workstation orchestrator with collapsible sidebars
+├── public/
+│   └── logo.svg                          # Public Prism brand mark SVG
 ├── src/
 │   ├── components/
-│   │   ├── chat/                 # MessageList, ThinkingDrawer, PlanChecklist
-│   │   ├── layout/               # WorkstationHeader
-│   │   ├── terminal/             # TerminalDrawer
-│   │   ├── ui/                   # Button, Badge, Tabs, Card primitives
-│   │   └── workspace/            # ProjectSwitcher, FileTree, StagedDiffViewer
+│   │   ├── chat/                         # MessageList, ChatInput, WorkLog, ThinkingDrawer
+│   │   ├── layout/                       # Sidebar (history + search), WorkstationHeader (toggles)
+│   │   ├── terminal/                     # TerminalDrawer with Auto-Fix trigger
+│   │   ├── ui/                           # AetherLogo, Button, Badge, Tabs, Card primitives
+│   │   └── workspace/                    # ProjectSwitcher, FileTree, StagedDiffViewer, ReviewDialog
+│   ├── hooks/
+│   │   ├── use-chat-session.ts           # SSE client consumer for /api/agent events
+│   │   └── use-conversations.ts          # CRUD state hook for on-disk chat history
 │   ├── lib/
-│   │   ├── gemini/               # StreamParser, PromptBuilder, GeminiClient
-│   │   ├── security/             # PathGuard, Sanitizer, SecretVault
-│   │   ├── terminal/             # CommandWhitelist, TerminalRunner
-│   │   └── workspace/            # FsAdapter, PatchEngine
+│   │   ├── agent/                        # config, model, rate-limiter, run-agent, system-prompt, tools/
+│   │   ├── history/                      # ConversationStore (atomic JSON persistence + UUID guard)
+│   │   ├── security/                     # PathGuard, Sanitizer, SecretVault, proxy.ts
+│   │   ├── terminal/                     # CommandWhitelist, TerminalRunner (win32 safe spawn)
+│   │   ├── types/                        # Conversation & message TypeScript contracts
+│   │   └── workspace/                    # FsAdapter, LCS DiffCalculator, PatchEngine
 │   └── store/
-│       └── workstation-store.ts  # Centralized React state manager
-├── docs/
-│   ├── ARCHITECTURE.md           # System design & module contracts
-│   ├── SECURITY.md               # 4-phase penetration audit & threat model
-│   └── PRD.md                    # Agile user stories & acceptance criteria
-├── PROJECT_RULES.md              # Engineering laws & standards
-└── AGENTS.md                     # Operational instructions for AI agents
+│       └── workstation-store.ts          # Reactive workspace state store
 ```
 
 ---
 
-## 🧪 Testing & Verification
+## 🧪 Verification & Testing Commands
 
-Run the comprehensive unit and penetration test suites:
 ```bash
+# Run the complete unit & security penetration test suite (61 tests)
 npm test
+
+# Verify strict TypeScript compilation
+npm run typecheck
+
+# Build optimized production bundle
+npm run build
 ```
-
-Includes tests for:
-- Path traversal & null-byte rejection (`security.test.ts`)
-- Staged unified diff calculation & `.backup` creation (`workspace.test.ts`)
-- Command whitelist & shell injection prevention (`terminal.test.ts`)
-- Streaming reasoning `<thinking>` & tag parser (`gemini-parser.test.ts`)
-- 4-Phase automated security penetration harness (`pentest.test.ts`)
-
----
-
-## 📜 Governance & Rules
-- [Project Rules (PROJECT_RULES.md)](./PROJECT_RULES.md)
-- [Agent Operational Guidelines (AGENTS.md)](./AGENTS.md)

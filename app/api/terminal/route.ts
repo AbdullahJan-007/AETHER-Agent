@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TerminalRunner } from "@/lib/terminal";
 import { SecretVault } from "@/lib/security";
+import { validateLocalRequest } from "@/src/lib/security/proxy";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const security = validateLocalRequest(req);
+  if (!security.allowed) return security.response!;
   try {
     const body = await req.json();
     const { binary, args = [], cwd } = body;

@@ -11,12 +11,13 @@ export class Sanitizer {
 
   /**
    * Wraps untrusted user/file content with explicit anti-jailbreak delimiter guards.
+   * @param maxChars Optional override of the truncation limit (agent tools pass a larger budget).
    */
-  public static wrapUntrustedContext(fileName: string, rawContent: string): string {
+  public static wrapUntrustedContext(fileName: string, rawContent: string, maxChars: number = this.MAX_FILE_CHARS): string {
     const cleaned = this.cleanContent(rawContent);
     const truncated =
-      cleaned.length > this.MAX_FILE_CHARS
-        ? cleaned.slice(0, this.MAX_FILE_CHARS) + "\n... [TRUNCATED DUE TO SIZE LIMIT]"
+      cleaned.length > maxChars
+        ? cleaned.slice(0, maxChars) + "\n... [TRUNCATED DUE TO SIZE LIMIT]"
         : cleaned;
 
     return `### UNTRUSTED USER-PROVIDED FILE: ${fileName}

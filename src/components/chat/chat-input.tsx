@@ -1,23 +1,40 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Square, Hammer, Compass, Bug, ShieldCheck, Paperclip, X } from "lucide-react";
-import { Button, Badge } from "@/components/ui";
-import type { EngineerMode, AttachedFile } from "@/lib/gemini/prompt-builder";
+import {
+  Send,
+  Square,
+  Hammer,
+  Compass,
+  Bug,
+  ShieldCheck,
+  Paperclip,
+  X,
+  AlertTriangle,
+} from "lucide-react";
+import type { AgentMode } from "@/src/lib/agent/system-prompt";
 
-export interface ChatInputProps {
-  onSendMessage: (text: string, mode: EngineerMode, attachments: AttachedFile[]) => void;
-  onStopGeneration?: () => void;
-  isGenerating: boolean;
+export interface AttachedFile {
+  name: string;
+  content: string;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({
+export interface ChatInputProps {
+  onSendMessage: (text: string, mode: AgentMode, attachments: AttachedFile[]) => void;
+  onStopGeneration?: () => void;
+  isGenerating: boolean;
+  activeMode: AgentMode;
+  onModeChange: (mode: AgentMode) => void;
+}
+
+export function ChatInput({
   onSendMessage,
   onStopGeneration,
   isGenerating,
-}) => {
+  activeMode,
+  onModeChange,
+}: ChatInputProps) {
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<EngineerMode>("build");
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +43,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     if (e) e.preventDefault();
     if ((!input.trim() && attachments.length === 0) || isGenerating) return;
 
-    onSendMessage(input.trim(), mode, attachments);
+    onSendMessage(input.trim(), activeMode, attachments);
     setInput("");
     setAttachments([]);
     if (textareaRef.current) {
@@ -35,7 +52,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
@@ -61,114 +78,142 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     setAttachments((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const modes: Array<{ id: EngineerMode; label: string; icon: React.ReactNode }> = [
-    { id: "build", label: "Build", icon: <Hammer className="w-3 h-3" /> },
-    { id: "architect", label: "Architect", icon: <Compass className="w-3 h-3" /> },
-    { id: "debug", label: "Debug", icon: <Bug className="w-3 h-3" /> },
-    { id: "review", label: "Review", icon: <ShieldCheck className="w-3 h-3" /> },
-  ];
+  const pasteError = async () => {
+    try {
+      const clipText = await navigator.clipboard.readText();
+      if (clipText) {
+        setInput((prev) => `${prev ? prev + "\n\n" : ""}Here is the error/stack trace:\n\`\`\`\n${clipText}\n\`\`\``);
+      }
+    } catch {
+      setInput((prev) => `${prev ? prev + "\n\n" : ""}Here is the error/stack trace:\n\`\`\`\n[Paste error output here]\n\`\`\``);
+    }
+  };
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        200
+      )}px`;
+    }
+  }, [input]);
 
   return (
-    <div className="border-t border-[#242b3d] bg-[#12151e] p-3 space-y-2">
-      {/* Mode Selector & Status */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
-          {modes.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setMode(m.id)}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                mode === m.id
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-[#1a1f2c] text-slate-400 hover:text-slate-200 border border-[#242b3d]"
-              }`}
-            >
-              {m.icon}
-              <span>{m.label}</span>
-            </button>
-          ))}
+    <div className="p-3 sm:p-4 bg-white/80 border-t border-stone-200/80 backdrop-blur-md">
+      {/* Mode bar & Quick buttons */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+        <div className="flex items-center gap-1 p-0.5 bg-stone-100/80 rounded-xl border border-stone-200/60">
+          {(
+            [
+              { id: "build", label: "Build", icon: Hammer },
+              { id: "architect", label: "Architect", icon: Compass },
+              { id: "debug", label: "Debug", icon: Bug },
+              { id: "review", label: "Review", icon: ShieldCheck },
+            ] as const
+          ).map((m) => {
+            const Icon = m.icon;
+            const isActive = activeMode === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => onModeChange(m.id)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  isActive
+                    ? "bg-white text-stone-900 shadow-2xs font-semibold"
+                    : "text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-orange-500" : "text-stone-400"}`} strokeWidth={1.9} />
+                <span>{m.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <Badge variant="outline" className="text-[10px] text-slate-500 font-mono">
-          Gemini 2.5 Flash • Free Tier
-        </Badge>
+        <div className="flex items-center gap-1.5 text-xs">
+          <button
+            type="button"
+            onClick={pasteError}
+            className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 rounded-lg border border-stone-200/80 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" strokeWidth={1.9} />
+            <span>Paste Error</span>
+          </button>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            multiple
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="px-2.5 py-1 text-stone-600 hover:bg-stone-100 rounded-lg border border-stone-200/80 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Paperclip className="w-3.5 h-3.5 text-stone-400" strokeWidth={1.9} />
+            <span>Attach File</span>
+          </button>
+        </div>
       </div>
 
-      {/* Attachment Chips */}
+      {/* Attachment Pills */}
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {attachments.map((att, i) => (
-            <span
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {attachments.map((file, i) => (
+            <div
               key={i}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#1a1f2c] border border-[#242b3d] text-xs text-indigo-300 font-mono"
+              className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 px-2 py-1 rounded-lg text-xs text-orange-900"
             >
-              <Paperclip className="w-3 h-3 text-slate-400" />
-              <span className="truncate max-w-[150px]">{att.name}</span>
-              <button onClick={() => removeAttachment(i)} className="hover:text-red-400">
+              <span className="font-mono truncate max-w-[150px]">{file.name}</span>
+              <button
+                type="button"
+                onClick={() => removeAttachment(i)}
+                className="hover:text-rose-600 cursor-pointer"
+              >
                 <X className="w-3 h-3" />
               </button>
-            </span>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Input Box */}
-      <div className="relative flex items-end gap-2 bg-[#1a1f2c] border border-[#242b3d] rounded-xl p-2 focus-within:border-indigo-500 transition-colors">
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileUpload}
-          multiple
-          className="hidden"
-        />
-
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => fileInputRef.current?.click()}
-          title="Attach files or logs"
-          className="text-slate-400 hover:text-slate-200 shrink-0 mb-0.5"
-        >
-          <Paperclip className="w-4 h-4" />
-        </Button>
-
+      {/* Input Textarea & Controls */}
+      <div className="flex items-end gap-2 bg-white rounded-2xl border border-stone-200 focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-100 p-2 shadow-xs transition-all">
         <textarea
           ref={textareaRef}
           value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            e.target.style.height = "auto";
-            e.target.style.height = `${Math.min(e.target.scrollHeight, 180)}px`;
-          }}
+          onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Describe full-stack features, paste logs, or request architectural refactors (Ctrl+Enter to send)..."
+          placeholder="Ask AETHER to implement a feature, inspect files, or debug a test failure..."
           rows={1}
-          className="w-full bg-transparent text-slate-200 text-xs sm:text-sm focus:outline-none resize-none leading-relaxed max-h-44 py-1"
+          className="flex-1 max-h-48 resize-none bg-transparent px-2 py-1 text-xs sm:text-sm text-stone-900 focus:outline-hidden placeholder:text-stone-400 leading-relaxed"
         />
 
         {isGenerating ? (
-          <Button
-            size="icon"
-            variant="destructive"
+          <button
+            type="button"
             onClick={onStopGeneration}
+            className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
             title="Stop generation"
-            className="shrink-0 mb-0.5"
           >
-            <Square className="w-4 h-4" />
-          </Button>
+            <Square className="w-4 h-4 fill-current" />
+          </button>
         ) : (
-          <Button
-            size="icon"
-            variant="primary"
+          <button
+            type="button"
             onClick={() => handleSubmit()}
             disabled={!input.trim() && attachments.length === 0}
-            title="Send prompt (Ctrl+Enter)"
-            className="shrink-0 mb-0.5"
+            className="p-2 bg-gradient-to-r from-orange-500 to-rose-600 hover:from-orange-600 hover:to-rose-700 disabled:opacity-40 text-white rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+            title="Send message (Enter)"
           >
             <Send className="w-4 h-4" />
-          </Button>
+          </button>
         )}
       </div>
     </div>
   );
-};
+}

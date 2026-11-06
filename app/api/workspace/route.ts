@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FsAdapter, PatchEngine } from "@/lib/workspace";
 import { SecretVault, PathGuard } from "@/lib/security";
+import { validateLocalRequest } from "@/src/lib/security/proxy";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  const security = validateLocalRequest(req);
+  if (!security.allowed) return security.response!;
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
@@ -37,6 +40,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const security = validateLocalRequest(req);
+  if (!security.allowed) return security.response!;
   try {
     const body = await req.json();
     const { action, file, content, root } = body;

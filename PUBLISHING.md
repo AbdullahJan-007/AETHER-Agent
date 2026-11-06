@@ -1,9 +1,9 @@
 # Installing & Publishing AETHER
 
-AETHER is a **local-first PWA (Progressive Web App)**. There's no account system
-and no cloud database — every install runs on the person's own machine, using
-their own free Gemini key, storing chat history in their own browser's
-IndexedDB. Nothing about you or them gets sent anywhere except the Gemini API
+AETHER is a **local-first AI Principal Engineer Workstation & PWA**. There's no account system
+and no cloud database — every install runs on the person's own machine (`127.0.0.1`), using
+their own Gemini key, and storing chat history locally on disk under `data/conversations/`
+(excluded from git). Nothing about you or them gets sent anywhere except the Gemini API
 call itself.
 
 ---

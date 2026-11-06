@@ -41,8 +41,16 @@ export class TerminalRunner {
 
   /**
    * Executes a safe, whitelisted command inside the designated working directory.
+   * @param timeoutMs Optional override; agent checks (full test suites, builds) pass a longer budget.
+   * @param signal Optional abort signal; aborting kills the whole process tree.
    */
-  public static async execute(binary: string, args: string[], cwd: string): Promise<TerminalResult> {
+  public static async execute(
+    binary: string,
+    args: string[],
+    cwd: string,
+    timeoutMs: number = TerminalRunner.TIMEOUT_MS,
+    signal?: AbortSignal
+  ): Promise<TerminalResult> {
     if (!CommandWhitelist.isAllowed(binary, args)) {
       return {
         success: false,
@@ -62,11 +70,12 @@ export class TerminalRunner {
       };
     }
 
-    // Windows resolves npm/npx as .cmd
-    const executable =
-      process.platform === "win32" && (binary === "npm" || binary === "npx")
-        ? `${binary}.cmd`
-        : binary;
+    // Windows resolves npm/npx as .cmd batch files. Since Node 18.20 / 20.12
+    // (CVE-2024-27980) spawning a .cmd with shell:false throws EINVAL, so those
+    // run through cmd.exe. That is safe here because CommandWhitelist has already
+    // rejected every shell metacharacter, quote and expansion sequence.
+    const isWinBatch = process.platform === "win32" && (binary === "npm" || binary === "npx");
+    const executable = isWinBatch ? `${binary}.cmd` : binary;
 
     return new Promise((resolve) => {
       let stdout = "";
@@ -75,24 +84,39 @@ export class TerminalRunner {
 
       const child = spawn(executable, args, {
         cwd: pathCheck.canonicalPath,
-        shell: false,
+        shell: isWinBatch,
+        windowsHide: true,
         env: this.getCleanEnv(),
       });
+
+      const killTree = () => {
+        try {
+          if (process.platform === "win32" && child.pid) {
+            // On Windows, taskkill kills the entire process tree including cmd wrappers
+            spawn("taskkill", ["/pid", child.pid.toString(), "/T", "/F"], { windowsHide: true });
+          } else {
+            child.kill("SIGKILL");
+          }
+        } catch {
+          // Ignore kill errors
+        }
+      };
+
+      const onAbort = () => {
+        if (exited) return;
+        exited = true;
+        clearTimeout(timer);
+        killTree();
+        resolve({ success: false, stdout, stderr: `${stderr}\n[Cancelled by user]`, exitCode: 130 });
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
 
       const timer = setTimeout(() => {
         if (!exited) {
           exited = true;
-          try {
-            if (process.platform === "win32" && child.pid) {
-              // On Windows, taskkill kills the entire process tree including cmd wrappers
-              spawn("taskkill", ["/pid", child.pid.toString(), "/T", "/F"]);
-            } else {
-              child.kill("SIGKILL");
-            }
-          } catch {
-            // Ignore kill errors
-          }
-          stderr += "\n[AETHER Execution timeout: command exceeded 30 seconds]";
+          signal?.removeEventListener("abort", onAbort);
+          killTree();
+          stderr += `\n[AETHER Execution timeout: command exceeded ${Math.round(timeoutMs / 1000)} seconds]`;
           resolve({
             success: false,
             stdout,
@@ -100,7 +124,7 @@ export class TerminalRunner {
             exitCode: 124, // Standard timeout exit code
           });
         }
-      }, this.TIMEOUT_MS);
+      }, timeoutMs);
 
       child.stdout?.on("data", (data) => {
         if (stdout.length < this.MAX_OUTPUT_CHARS) {
