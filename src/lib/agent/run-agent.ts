@@ -83,7 +83,7 @@ export async function* runAgent(
     }
   }
 
-  async function openStreamWithFailover(): Promise<AsyncIterable<AIMessageChunk>> {
+  async function openStreamWithFailover(): Promise<AsyncIterable<any>> {
     try {
       return await model.stream(conversationMessages, { signal: opts.signal });
     } catch (primaryErr: unknown) {
